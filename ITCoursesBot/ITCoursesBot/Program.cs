@@ -14,9 +14,8 @@ namespace ITCoursesBot
 
             using CancellationTokenSource cts = new CancellationTokenSource();
 
-            // Передаём настройки OpenAI в клиент. Здесь можно модифицировать конструктор OpenAIClient,
-            // чтобы принимать необходимые ключи из settings.
             using var httpClient = new HttpClient();
+            // Передаём настройки OpenAI в клиент.
             IOpenAIClient openAIClient = new OpenAIClient(httpClient, settings.OpenAI);
 
             // Передаём настройки Telegram в сервис бота.
