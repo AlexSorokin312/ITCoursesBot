@@ -24,7 +24,7 @@ namespace ITCoursesBot.Services
         {
             var requestBody = new
             {
-                model = "gpt-4o", // укажите нужную модель
+                model = "gpt-4.1", // укажите нужную модель
                 messages = new object[]
                 {
                     new
@@ -66,6 +66,56 @@ namespace ITCoursesBot.Services
                 return "Не удалось извлечь ответ ассистента.";
 
             return chatResponse.choices[0].message.content.Trim();
+        }
+        public async Task<string> TranscribeAudioAsync(Stream audioStream, string fileName)
+        {
+            // Whisper  принимает multipart/form-data
+            using var form = new MultipartFormDataContent();
+            // Важно: позиционируемся в начало, иначе будет пустой поток
+            if (audioStream.CanSeek) audioStream.Position = 0;
+
+            form.Add(new StreamContent(audioStream), "file", fileName);
+            form.Add(new StringContent("whisper-1"), "model");
+            // при желании можно добавить  form.Add(new StringContent("ru"), "language");
+
+
+            HttpResponseMessage response =
+                await _httpClient.PostAsync("https://api.openai.com/v1/audio/transcriptions", form);
+
+            if (!response.IsSuccessStatusCode)
+                return $"Ошибка Whisper API: {response.StatusCode}\n{await response.Content.ReadAsStringAsync()}";
+
+            string json = await response.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(json);
+            // в /v1/audio/transcriptions поле "text" – сама расшифровка
+            return doc.RootElement.GetProperty("text").GetString() ?? string.Empty;
+        }
+
+        public async Task<Stream> GenerateSpeechAsync(string text, string model = "tts-1", string voice = "alloy", string format = "opus")
+        {
+            // Формируем тело запроса
+            var payload = new
+            {
+                model = model,
+                input = text,
+                voice = voice,
+                response_format = format    // по умолчанию opus для Telegram Voice
+            };
+            string json = JsonSerializer.Serialize(payload);
+
+            using var content = new StringContent(json, Encoding.UTF8, "application/json");
+            HttpResponseMessage response =
+                await _httpClient.PostAsync("https://api.openai.com/v1/audio/speech", content);
+
+            if (!response.IsSuccessStatusCode)
+                throw new HttpRequestException(
+                    $"Ошибка TTS API: {response.StatusCode}\n{await response.Content.ReadAsStringAsync()}");
+
+            // Читаем бинарный ответ в поток
+            var ms = new MemoryStream();
+            await response.Content.CopyToAsync(ms);
+            ms.Position = 0;
+            return ms;
         }
     }
 }
