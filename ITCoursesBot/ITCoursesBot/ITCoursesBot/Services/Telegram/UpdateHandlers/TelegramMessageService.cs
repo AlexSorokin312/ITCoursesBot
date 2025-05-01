@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using System.Text.RegularExpressions;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -28,40 +29,36 @@ public class TelegramMessageService : IMessageService
 {
     private readonly ITelegramBotClient _bot;
 
+    // 1) Шаблон на code-block (```…```) — всё, что совпало, мы не трогаем.
+    private static readonly Regex CodeBlockRegex = new Regex(@"(```[\s\S]*?```)", RegexOptions.Compiled);
+
+    // 2) Regex для экранирования спецсимволов MarkdownV2 (без звёздочек!)
+    private static readonly Regex EscapeRegex = new Regex(@"([_\[\]\(\)~`>#+\-=|{}\.\!])", RegexOptions.Compiled);
+
     public TelegramMessageService(ITelegramBotClient bot) => _bot = bot;
 
-
+    /// <summary>
+    /// Экранирует текст для MarkdownV2:
+    /// — не трогает всё, что внутри ```…```
+    /// — вне кода экранирует все спецсимволы, кроме звёздочек (*),
+    ///   так что **жирный** будет работать.
+    /// </summary>
     public static string EscapeMarkdownV2(string text)
     {
-        var escapeChars = "_*[]()~`>#+-=|{}.!";
-        var sb = new StringBuilder();
-        bool inCodeBlock = false;
+        // Разбиваем на фрагменты: либо кусок «code-block», либо простая строка
+        var parts = CodeBlockRegex.Split(text);
 
-        foreach (var line in text.Split('\n'))
+        for (int i = 0; i < parts.Length; i++)
         {
-            if (line.StartsWith("```"))
+            // Если это не code-block (не начинается с ```), экранируем все спецсимволы
+            if (!parts[i].StartsWith("```"))
             {
-                inCodeBlock = !inCodeBlock;
-                sb.AppendLine(line);
-                continue;
-            }
-
-            if (inCodeBlock)
-            {
-                // В код-блоке эскейпим только '\' и '`'
-                sb.AppendLine(line
-                    .Replace(@"\", @"\\")
-                    .Replace("`", "\\`"));
-            }
-            else
-            {
-                foreach (char c in line)
-                    sb.Append(escapeChars.Contains(c) ? $"\\{c}" : c.ToString());
-                sb.AppendLine();
+                parts[i] = EscapeRegex.Replace(parts[i], "\\$1");
             }
         }
 
-        return sb.ToString().TrimEnd();
+        // Собираем обратно
+        return string.Concat(parts);
     }
 
     public async Task SendTextAsync(
@@ -72,17 +69,18 @@ public class TelegramMessageService : IMessageService
         CancellationToken cancellationToken = default)
     {
         var finalText = asMarkdown
-            ? TelegramMessageService.EscapeMarkdownV2(text)
+            ? EscapeMarkdownV2(text)
             : text;
 
         await _bot.SendMessage(
             chatId: chatId,
             text: finalText,
             parseMode: asMarkdown
-                ? ParseMode.MarkdownV2
-                : ParseMode.None,
+                               ? ParseMode.MarkdownV2
+                               : ParseMode.None,
             replyMarkup: replyMarkup,
-            cancellationToken: cancellationToken);
+            cancellationToken: cancellationToken
+        );
     }
 
     public async Task SendVoiceAsync(
@@ -92,8 +90,9 @@ public class TelegramMessageService : IMessageService
         CancellationToken cancellationToken = default)
     {
         await _bot.SendVoice(
-            chatId,
-            InputFile.FromStream(voiceStream, fileName),
-            cancellationToken: cancellationToken);
+            chatId: chatId,
+            voice: InputFile.FromStream(voiceStream, fileName),
+            cancellationToken: cancellationToken
+        );
     }
 }
