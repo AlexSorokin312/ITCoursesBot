@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using ITCoursesBot.ITCoursesBot.Configuration;
 using ITCoursesBot.ITCoursesBot.Services.Telegram;
+using Telegram.Bot;
 
 namespace ITCoursesBot
 {
