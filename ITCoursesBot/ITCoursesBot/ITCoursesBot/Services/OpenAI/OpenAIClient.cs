@@ -31,7 +31,7 @@ namespace ITCoursesBot.Services
                     {
                         role = "system",
                         // Используем инструкции из конфигурационного файла
-                        content = _openAISettings.ChatInstructions
+                        content = _openAISettings.InstructionsDialog
                     },
                     new
                     {
@@ -66,6 +66,35 @@ namespace ITCoursesBot.Services
                 return "Не удалось извлечь ответ ассистента.";
 
             return chatResponse.choices[0].message.content.Trim();
+        }
+
+
+        public async Task<string> GetChatResponseAsync(string systemInstructions, string userMessage)
+        {
+            var requestBody = new
+            {
+                model = "gpt-4.1",
+                messages = new object[]
+                {
+                new { role = "system", content = systemInstructions ?? throw new ArgumentNullException(nameof(systemInstructions)) },
+                new { role = "user",   content = userMessage        ?? string.Empty }
+                }
+            };
+
+            var jsonRequest = JsonSerializer.Serialize(requestBody);
+            using var content = new StringContent(jsonRequest, Encoding.UTF8, "application/json");
+            var response = await _httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var err = await response.Content.ReadAsStringAsync();
+                return $"Ошибка OpenAI: {response.StatusCode}\n{err}";
+            }
+
+            var respJson = await response.Content.ReadAsStringAsync();
+            var chatResp = JsonSerializer.Deserialize<ChatResponse>(respJson)
+                           ?? throw new Exception("Пустой ответ от ChatGPT");
+            return chatResp.choices[0].message.content.Trim();
         }
         public async Task<string> TranscribeAudioAsync(Stream audioStream, string fileName)
         {

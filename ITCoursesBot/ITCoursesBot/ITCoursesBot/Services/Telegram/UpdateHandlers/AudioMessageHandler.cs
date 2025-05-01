@@ -24,7 +24,7 @@ public class AudioMessageHandler : IUpdateHandler
 
     public async Task HandleAsync(Update update, CancellationToken ct)
     {
-        var msg = update.Message!;
+       /* var msg = update.Message!;
         var chatId = msg.Chat.Id;
         string fileId = msg.Voice?.FileId ?? msg.Audio!.FileId;
 
@@ -41,7 +41,7 @@ public class AudioMessageHandler : IUpdateHandler
         Console.WriteLine($"Whisper → \"{transcription}\"");
 
         // 3) Ответ от модели
-        string aiText = await _openAI.GetChatResponseAsync(transcription);
+        string aiText = await _openAI.GetChatResponseAsync(transcription ,null);
 
         // 4) Отправляем текст
         await _bot.SendMessage(
@@ -51,6 +51,6 @@ public class AudioMessageHandler : IUpdateHandler
         );
 
         // 5) и озвучку
-        await _tts.SendSpeechAsync(_bot, chatId, aiText, ct);
+        await _tts.SendSpeechAsync(_bot, chatId, aiText, ct);*/
     }
 }

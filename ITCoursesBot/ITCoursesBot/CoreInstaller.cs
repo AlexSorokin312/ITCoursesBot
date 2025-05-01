@@ -18,6 +18,8 @@ namespace ITCoursesBot
             services.AddSingleton(settings);
             services.AddHttpClient();
 
+            services.AddSingleton(settings.OpenAI);
+
             services.AddSingleton<IOpenAIClient>(sp =>
             {
                 var factory = sp.GetRequiredService<IHttpClientFactory>();
@@ -36,6 +38,8 @@ namespace ITCoursesBot
 
             services.AddSingleton<ITelegramBotService, TelegramBotService>();
             services.AddSingleton<IMessageService, TelegramMessageService>();
+
+            services.AddSingleton<IQuestionRepository, QuestionRepository>();
             return services;
         }
 

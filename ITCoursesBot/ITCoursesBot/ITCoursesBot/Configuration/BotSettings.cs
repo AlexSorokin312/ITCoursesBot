@@ -15,6 +15,9 @@
     {
         public string AssistantId { get; set; }
         public string ApiKey { get; set; }
-        public string ChatInstructions { get; set; }
+        public string InstructionsQuestions { get; set; }
+        public string InstructionsDialog { get; set; }
+        public string InstructionsCodeExplain { get; set; }
+        public string InstructionsMockInterview { get; set; }
     }
 }

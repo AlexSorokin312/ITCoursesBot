@@ -29,12 +29,12 @@ public class TextMessageHandler : IUpdateHandler
 
     public async Task HandleAsync(Update update, CancellationToken ct)
     {
-        var msg = update.Message!;
+      /*  var msg = update.Message!;
         var chatId = msg.Chat.Id;
         Console.WriteLine($"Text: \"{msg.Text}\" from {chatId}");
 
         // 1) Получаем ответ OpenAI
-        string aiText = await _openAI.GetChatResponseAsync(msg.Text);
+        string aiText = await _openAI.GetChatResponseAsync(msg.Text, null);
 
         // 2) Строим клавиатуру
         var keyboard = _kbBuilder.Build();
@@ -48,7 +48,7 @@ public class TextMessageHandler : IUpdateHandler
         );
 
         // 4) Отправляем озвучку
-        await _tts.SendSpeechAsync(_bot, chatId, aiText, ct);
+        await _tts.SendSpeechAsync(_bot, chatId, aiText, ct);*/
     }
 
     public bool CanHandle(Update update)

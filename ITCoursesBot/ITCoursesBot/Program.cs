@@ -19,15 +19,15 @@ namespace ITCoursesBot
             var provider = services.BuildServiceProvider();
 
             // 3) Запускаем Telegram-бота
-            using var cts = new CancellationTokenSource();
-            var botService = provider.GetRequiredService<ITelegramBotService>();
-            await botService.StartAsync(cts.Token);
+                using var cts = new CancellationTokenSource();
+                var botService = provider.GetRequiredService<ITelegramBotService>();
+                await botService.StartAsync(cts.Token);
 
-            Console.WriteLine("Нажмите любую клавишу для остановки...");
-            Console.ReadKey();
+                Console.WriteLine("Нажмите любую клавишу для остановки...");
+                Console.ReadKey();
 
-            cts.Cancel();
-            Console.WriteLine("Бот остановлен.");
-        }
+                cts.Cancel();
+                Console.WriteLine("Бот остановлен.");
+            }
     }
 }
