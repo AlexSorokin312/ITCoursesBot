@@ -228,15 +228,13 @@ public class TelegramBotService : ITelegramBotService
         {
             string explanation = await _openAi.GetChatResponseAsync(systemInst, msg!.Text);
 
-            // Приводим текст к корректному Markdown V2 с code-block'ами
-            string markdown = TelegramMessageService.PrepareMarkdownV2(explanation);
-
             await _messageService.SendTextAsync(
                 chatId,
-                markdown,
+                explanation,
                 replyMarkup: _kbBuilder.BuildBackToMenu(),
                 asMarkdown: true,
                 cancellationToken: ct);
+
 
             return;
         }

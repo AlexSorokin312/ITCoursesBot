@@ -30,36 +30,39 @@ public class TelegramMessageService : IMessageService
 
     public TelegramMessageService(ITelegramBotClient bot) => _bot = bot;
 
-    // ---------------------- Markdown V2 утилиты ----------------------
-    private static readonly char[] _special =
-        { '_','*','[',']','(',')','~','`','>','#','+','-','=','|','{','}','.','!' };
 
-    /// Экранирует текст для Markdown V2 (КРОМЕ фрагментов внутри ``` … ```).
-    public static string PrepareMarkdownV2(string raw)
+    public static string EscapeMarkdownV2(string text)
     {
-        var parts = raw.Split("```", StringSplitOptions.None);
-        var sb = new StringBuilder(raw.Length * 2);
-        bool inCode = false;
+        var escapeChars = "_*[]()~`>#+-=|{}.!";
+        var sb = new StringBuilder();
+        bool inCodeBlock = false;
 
-        foreach (var part in parts)
+        foreach (var line in text.Split('\n'))
         {
-            if (inCode)
+            if (line.StartsWith("```"))
             {
-                // внутри code-block трогаем только слэши и сами бэктики
-                sb.Append("```")
-                  .Append(part.Replace(@"\", @"\\").Replace("```", "\\`\\`\\`"))
-                  .Append("```");
+                inCodeBlock = !inCodeBlock;
+                sb.AppendLine(line);
+                continue;
+            }
+
+            if (inCodeBlock)
+            {
+                // В код-блоке эскейпим только '\' и '`'
+                sb.AppendLine(line
+                    .Replace(@"\", @"\\")
+                    .Replace("`", "\\`"));
             }
             else
             {
-                foreach (char ch in part)
-                    sb.Append(_special.Contains(ch) ? $"\\{ch}" : ch);
+                foreach (char c in line)
+                    sb.Append(escapeChars.Contains(c) ? $"\\{c}" : c.ToString());
+                sb.AppendLine();
             }
-            inCode = !inCode;
         }
-        return sb.ToString();
+
+        return sb.ToString().TrimEnd();
     }
-    // -----------------------------------------------------------------
 
     public async Task SendTextAsync(
         long chatId,
@@ -68,10 +71,16 @@ public class TelegramMessageService : IMessageService
         bool asMarkdown = false,
         CancellationToken cancellationToken = default)
     {
+        var finalText = asMarkdown
+            ? TelegramMessageService.EscapeMarkdownV2(text)
+            : text;
+
         await _bot.SendMessage(
             chatId: chatId,
-            text: text,
-            parseMode: asMarkdown ? ParseMode.MarkdownV2 : ParseMode.None,
+            text: finalText,
+            parseMode: asMarkdown
+                ? ParseMode.MarkdownV2
+                : ParseMode.None,
             replyMarkup: replyMarkup,
             cancellationToken: cancellationToken);
     }
