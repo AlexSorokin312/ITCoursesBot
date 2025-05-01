@@ -9,12 +9,12 @@ namespace ITCoursesBot.ITCoursesBot.Services.Telegram
 {
     public class TelegramBotService : ITelegramBotService
     {
-        private readonly TelegramBotClient _botClient;
+        private readonly ITelegramBotClient _botClient;
         private readonly IOpenAIClient _openAIClient;
 
-        public TelegramBotService(string telegramApiKey, IOpenAIClient openAIClient)
+        public TelegramBotService(ITelegramBotClient botClient, IOpenAIClient openAIClient)      
         {
-            _botClient = new TelegramBotClient(telegramApiKey);
+            _botClient = botClient;
             _openAIClient = openAIClient;
         }
 
@@ -111,8 +111,6 @@ namespace ITCoursesBot.ITCoursesBot.Services.Telegram
                 cancellationToken: cancellationToken
             );
         }
-
-
 
         private Task HandleErrorAsync(ITelegramBotClient bot, Exception exception, CancellationToken cancellationToken)
         {

@@ -1,7 +1,9 @@
-﻿using ITCoursesBot.ITCoursesBot.Configuration;
-using ITCoursesBot.ITCoursesBot.Services.OpenAI;
+﻿using System;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
+using ITCoursesBot.ITCoursesBot.Configuration;
 using ITCoursesBot.ITCoursesBot.Services.Telegram;
-using ITCoursesBot.Services;
 
 namespace ITCoursesBot
 {
@@ -9,18 +11,16 @@ namespace ITCoursesBot
     {
         public static async Task Main(string[] args)
         {
-            // Загружаем настройки из appsettings.json
             BotSettings settings = ConfigurationLoader.LoadSettings();
 
-            using CancellationTokenSource cts = new CancellationTokenSource();
+            var services = new ServiceCollection().AddBotServices(settings);
 
-            using var httpClient = new HttpClient();
-            // Передаём настройки OpenAI в клиент.
-            IOpenAIClient openAIClient = new OpenAIClient(httpClient, settings.OpenAI);
+            var provider = services.BuildServiceProvider();
 
-            // Передаём настройки Telegram в сервис бота.
-            ITelegramBotService telegramBotService = new TelegramBotService(settings.Telegram.ApiKey, openAIClient);
-            await telegramBotService.StartAsync(cts.Token);
+            // 3) Запускаем Telegram-бота
+            using var cts = new CancellationTokenSource();
+            var botService = provider.GetRequiredService<ITelegramBotService>();
+            await botService.StartAsync(cts.Token);
 
             Console.WriteLine("Нажмите любую клавишу для остановки...");
             Console.ReadKey();
