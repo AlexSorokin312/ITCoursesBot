@@ -15,6 +15,8 @@ namespace ITCoursesBot
         /// </summary>
         public static IServiceCollection AddBotServices(this IServiceCollection services, BotSettings settings)
         {
+            services.AddSingleton(settings);
+            services.AddHttpClient();
 
             services.AddSingleton<IOpenAIClient>(sp =>
             {
@@ -23,17 +25,19 @@ namespace ITCoursesBot
                 return new OpenAIClient(client, settings.OpenAI);
             });
 
-            services
-                .AddSingleton<ITelegramBotClient>(sp => new TelegramBotClient(settings.Telegram.ApiKey))
-                .AddSingleton<ITextToSpeechService, OpenAITtsService>()
-                .AddSingleton<IKeyboardBuilder, SimpleKeyboardBuilder>()
-                .AddTransient<IUpdateHandler, TextMessageHandler>()
-                .AddTransient<IUpdateHandler, AudioMessageHandler>()
-                .AddSingleton<ITelegramBotService, TelegramBotService>()
-                .AddSingleton(settings);
-             services.AddHttpClient(); ;
+            services.AddSingleton<ITelegramBotClient>(sp =>
+                new TelegramBotClient(settings.Telegram.ApiKey));
+            services.AddSingleton<ITextToSpeechService, OpenAITtsService>();
+            services.AddSingleton<IKeyboardBuilder, SimpleKeyboardBuilder>();
 
+            services.AddTransient<IUpdateHandler, TextMessageHandler>();
+
+            services.AddTransient<IUpdateHandler, AudioMessageHandler>();
+
+            services.AddSingleton<ITelegramBotService, TelegramBotService>();
+            services.AddSingleton<IMessageService, TelegramMessageService>();
             return services;
         }
+
     }
 }

@@ -8,12 +8,25 @@ public interface IKeyboardBuilder
 public class SimpleKeyboardBuilder : IKeyboardBuilder
 {
     public InlineKeyboardMarkup Build() =>
-        new(new[]
+        new InlineKeyboardMarkup(new[]
         {
+            // Первый ряд
             new[]
             {
-                InlineKeyboardButton.WithCallbackData("Кнопка 1", "btn1"),
-                InlineKeyboardButton.WithCallbackData("Кнопка 2", "btn2")
+                InlineKeyboardButton.WithCallbackData("📝 Вопросы по урокам", "questions"),
+                InlineKeyboardButton.WithCallbackData("🎯 Тренажёр собеседований", "mock_interview")
+            },
+            // Второй ряд
+            new[]
+            {
+                InlineKeyboardButton.WithCallbackData("📊 Прогресс", "progress"),
+                InlineKeyboardButton.WithCallbackData("💡 Объяснения кода", "code_explanations")
+            },
+            // Третий ряд
+            new[]
+            {
+                InlineKeyboardButton.WithCallbackData("💬 Диалог", "dialog"),
+                InlineKeyboardButton.WithCallbackData("⚙️ Мои настройки", "settings")
             }
         });
 }

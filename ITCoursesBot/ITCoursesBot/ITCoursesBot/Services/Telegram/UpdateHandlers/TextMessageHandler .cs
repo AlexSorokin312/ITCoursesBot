@@ -1,7 +1,12 @@
-﻿// 2) Обработка текстовых сообщений
-using ITCoursesBot.ITCoursesBot.Services.OpenAI;
+﻿using ITCoursesBot.ITCoursesBot.Services.OpenAI;
 using Telegram.Bot;
 using Telegram.Bot.Types;
+
+public class UserSession
+{
+    public int UserId;
+    public string Mode;
+}
 
 public class TextMessageHandler : IUpdateHandler
 {
@@ -21,9 +26,6 @@ public class TextMessageHandler : IUpdateHandler
         _kbBuilder = kbBuilder;
         _tts = tts;
     }
-
-    public bool CanHandle(Update update) =>
-        update.Message?.Text is not null;
 
     public async Task HandleAsync(Update update, CancellationToken ct)
     {
@@ -47,5 +49,11 @@ public class TextMessageHandler : IUpdateHandler
 
         // 4) Отправляем озвучку
         await _tts.SendSpeechAsync(_bot, chatId, aiText, ct);
+    }
+
+    public bool CanHandle(Update update)
+    {
+        return update.Message?.Text is not null
+            || update.CallbackQuery is not null;
     }
 }
