@@ -36,7 +36,7 @@ namespace ITCoursesBot
             services.AddSingleton<ITelegramBotClient>(sp =>
                 new TelegramBotClient(settings.Telegram.ApiKey));
             services.AddSingleton<ITextToSpeechService, TtsService>();
-            services.AddSingleton<IKeyboardBuilder, SimpleKeyboardBuilder>();
+            services.AddSingleton<IKeyboardBuilder, KeyboardBuilder>();
 
             services.AddTransient<IUpdateHandler, TextMessageHandler>();
 
@@ -45,7 +45,7 @@ namespace ITCoursesBot
             services.AddSingleton<ITelegramBotService, TelegramBotService>();
             services.AddSingleton<IMessageService, TelegramMessageService>();
 
-            services.AddSingleton<IQuestionRepository, QuestionRepository>();
+            services.AddSingleton<IQuizRepository, QuizRepository>();
             return services;
         }
 

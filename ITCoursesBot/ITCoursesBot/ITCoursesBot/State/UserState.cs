@@ -1,4 +1,4 @@
-﻿public enum BotMode { None, Questions, CodeExplain, MockInterview, Dialog }
+﻿public enum BotMode { None, BeginQuiz, PassQuiz, CodeExplain, MockInterview, Dialog }
 
 public class UserState
 {
@@ -7,7 +7,7 @@ public class UserState
     public List<string>? Questions { get; set; }
     public int Index { get; set; }
 
-    public bool AwaitLessonNumber => Mode == BotMode.Questions && LessonId is null;
-    public bool AwaitAnswer => (Mode == BotMode.Questions || Mode == BotMode.MockInterview)
+    public bool AwaitLessonNumber => Mode == BotMode.BeginQuiz && LessonId is null;
+    public bool AwaitAnswer => (Mode == BotMode.BeginQuiz || Mode == BotMode.MockInterview)
                                 && LessonId is not null && Questions is not null;
 }

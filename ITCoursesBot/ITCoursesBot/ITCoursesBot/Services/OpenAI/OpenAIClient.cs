@@ -1,15 +1,7 @@
-﻿// Services/OpenAI/OpenAIClient.cs
-using System;
-using System.IO;
-using System.Net.Http;
+﻿using ITCoursesBot.Interfaces;
+using ITCoursesBot.ITCoursesBot.Configuration;
 using System.Text;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
-using ITCoursesBot.Interfaces;
-using ITCoursesBot.ITCoursesBot.Configuration;
-using ITCoursesBot.ITCoursesBot.Models;
-using ITCoursesBot.ITCoursesBot.Services.OpenAI;
 
 namespace ITCoursesBot.ITCoursesBot.Services.OpenAI
 {

@@ -1,14 +1,15 @@
 ﻿using ITCoursesBot.Interfaces;
 using Telegram.Bot.Types.ReplyMarkups;
 
-public class SimpleKeyboardBuilder : IKeyboardBuilder
+public class KeyboardBuilder : IKeyboardBuilder
 {
+    public const string BEGIN_QUIZ_BUTTON_NAME = "begin_quiz";
     public InlineKeyboardMarkup Build() =>
         new InlineKeyboardMarkup(new[]
         {
             new[]
             {
-                InlineKeyboardButton.WithCallbackData("📝 Вопросы по урокам",      "questions"),
+                InlineKeyboardButton.WithCallbackData("📝 Вопросы по урокам",      "begin_quiz"),
                 InlineKeyboardButton.WithCallbackData("🎯 Тренажёр собеседований","mock_interview")
             },
             new[]
@@ -25,7 +26,6 @@ public class SimpleKeyboardBuilder : IKeyboardBuilder
 
     public InlineKeyboardMarkup BuildNextFinish(bool more)
     {
-        // Если есть следующий вопрос — показываем «Следующий вопрос», иначе только «Завершить»
         var buttons = new List<InlineKeyboardButton>();
         if (more)
         {

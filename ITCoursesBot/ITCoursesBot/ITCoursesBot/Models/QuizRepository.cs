@@ -1,6 +1,6 @@
 ﻿using ITCoursesBot.Interfaces;
 
-public class QuestionRepository : IQuestionRepository
+public class QuizRepository : IQuizRepository
 {
     public Dictionary<string, List<string>> course { get; } = new()
     {

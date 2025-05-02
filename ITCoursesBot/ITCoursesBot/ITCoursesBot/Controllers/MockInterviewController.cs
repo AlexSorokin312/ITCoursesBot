@@ -1,5 +1,6 @@
 ﻿
 using Telegram.Bot;
+using Telegram.Bot.Types;
 
 namespace ITCoursesBot.ITCoursesBot.Controllers
 {
@@ -7,6 +8,11 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
     {
         public MockInterviewController(ITelegramBotClient bot) : base(bot)
         {
+        }
+
+        public override bool CanHandle()
+        {
+            return false;
         }
 
         public override Task<bool> HandleAsync(CancellationToken ct)

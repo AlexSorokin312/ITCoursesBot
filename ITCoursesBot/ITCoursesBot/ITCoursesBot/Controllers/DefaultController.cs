@@ -1,17 +1,28 @@
-﻿using System;
+﻿using ITCoursesBot.Interfaces;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Telegram.Bot;
+using Telegram.Bot.Types;
 
 namespace ITCoursesBot.ITCoursesBot.Controllers
 {
     public class DefaultController : BaseController
     {
 
-        public DefaultController(ITelegramBotClient bot) : base(bot)
+        public DefaultController(ITelegramBotClient bot,
+            IMessageService messageService,
+            IKeyboardBuilder keyboardBuilder,
+            ISessionManager sessionManager) : base(bot, messageService, sessionManager)
         {
+
+        }
+
+        public override bool CanHandle()
+        {
+            return false;
         }
 
         public override Task<bool> HandleAsync(CancellationToken ct)

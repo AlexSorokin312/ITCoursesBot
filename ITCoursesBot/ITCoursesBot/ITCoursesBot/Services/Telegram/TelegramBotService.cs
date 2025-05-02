@@ -1,9 +1,8 @@
-﻿using Telegram.Bot.Types;
-using Telegram.Bot;
-using System.Collections.Concurrent;
+﻿using ITCoursesBot.Interfaces;
 using ITCoursesBot.ITCoursesBot.Configuration;
-using System.Text;
-using ITCoursesBot.Interfaces;
+using System.Collections.Concurrent;
+using Telegram.Bot;
+using Telegram.Bot.Types;
 
 
 
@@ -14,13 +13,12 @@ public class TelegramBotService : ITelegramBotService
     private readonly IOpenAIClient _openAi;
     private readonly IEnumerable<IUpdateHandler> _handlers;
     private readonly IKeyboardBuilder _kbBuilder;
-    private readonly IQuestionRepository _questions;
+    private readonly IQuizRepository _questions;
     private readonly OpenAISettings _openAISettings;
 
 
     // Храним состояние диалога на пользователя
     private readonly ConcurrentDictionary<long, ChatSession> _sessions = new();
-
 
     public TelegramBotService(
         ITelegramBotClient botClient,
@@ -28,7 +26,7 @@ public class TelegramBotService : ITelegramBotService
         IEnumerable<IUpdateHandler> handlers,
         IKeyboardBuilder kbBuilder,
         OpenAISettings openAISettings,
-        IQuestionRepository questions,
+        IQuizRepository questions,
         IOpenAIClient openAi
         )
     {
@@ -86,12 +84,12 @@ public class TelegramBotService : ITelegramBotService
 
         if (callbackData is not null)
         {
-            var session = _sessions.GetOrAdd(chatId, _ => new ChatSession());
+            var session = _sessions.GetOrAdd(chatId, _ => new ChatSession(chatId));
 
             switch (callbackData)
             {
                 case "questions":
-                    session.Mode = BotMode.Questions;
+                    session.Mode = BotMode.BeginQuiz;
                     session.LessonIdentifier = null;
                     await _messageService.SendTextAsync(chatId,
                         "Введите идентификатор урока", cancellationToken: ct);
@@ -148,7 +146,7 @@ public class TelegramBotService : ITelegramBotService
 
         string systemInst = s.Mode switch
         {
-            BotMode.Questions => _openAISettings.InstructionsQuestions,
+            BotMode.BeginQuiz => _openAISettings.InstructionsQuestions,
             BotMode.Dialog => _openAISettings.InstructionsDialog,
             BotMode.CodeExplain => _openAISettings.InstructionsCodeExplain,
             BotMode.MockInterview => _openAISettings.InstructionsMockInterview,
@@ -156,7 +154,7 @@ public class TelegramBotService : ITelegramBotService
         };
 
         // -------- режим “Questions” ------------------------------------------------------------
-        if (s.Mode == BotMode.Questions)
+        if (s.Mode == BotMode.BeginQuiz)
         {
             // шаг 1: ждём номер урока
             if (s.WaitingForLessonNumber)
@@ -303,21 +301,4 @@ public class TelegramBotService : ITelegramBotService
         Console.WriteLine($"Ошибка: {ex.Message}");
         return Task.CompletedTask;
     }
-}
-
-
-public class ChatSession
-{
-    public BotMode Mode { get; set; } = BotMode.None;
-
-    // --- блок “Questions” / “MockInterview” ---
-    public string? LessonIdentifier { get; set; }
-    public List<string>? QuestionPool { get; set; }
-    public int QuestionIndex { get; set; }
-
-    // --- общие поля ---
-    public bool WaitingForLessonNumber => Mode is BotMode.Questions && LessonIdentifier is null;
-    public bool WaitingForAnswer => Mode is BotMode.Questions or BotMode.MockInterview
-                                                 && LessonIdentifier is not null
-                                                 && QuestionPool is not null;
 }

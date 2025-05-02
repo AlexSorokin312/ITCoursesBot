@@ -1,6 +1,7 @@
 ﻿using ITCoursesBot.Interfaces;
 using ITCoursesBot.ITCoursesBot.Configuration;
 using ITCoursesBot.ITCoursesBot.Controllers;
+using ITCoursesBot.ITCoursesBot.Models;
 using ITCoursesBot.ITCoursesBot.Services.OpenAI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -35,13 +36,20 @@ namespace ITCoursesBot.ITCoursesBot
             services.AddHttpClient();
             services.AddScoped<IMessageService, TelegramMessageService>();
             services.AddScoped<IOpenAIClient, OpenAIClient>();
-            services.AddScoped<IQuestionRepository, QuestionRepository>();
+            services.AddScoped<IQuizRepository, QuizRepository>();
+            services.AddScoped<IKeyboardBuilder, KeyboardBuilder>();
+            services.AddScoped<ISessionManager, SessionManager>();
+            services.AddScoped<IQuizRepository, QuizRepository>();
+
             return services;
         }
 
         public static IServiceCollection AddBotControllers(this IServiceCollection services)
         {
-            services.AddScoped<BaseController, QuizController>();
+            services.AddScoped<BaseController, StartController>();
+            services.AddScoped<BaseController, BeginQuizController>();
+            services.AddScoped<BaseController, PassQuizController>();
+            services.AddScoped<BaseController, ButtonHanlderController>();
             services.AddScoped<BaseController, CodeExplainController>();
             services.AddScoped<BaseController, MockInterviewController>();
             services.AddScoped<BaseController, DialogController>();

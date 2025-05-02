@@ -1,55 +1,66 @@
-﻿// Controllers/QuizController.cs
-using ITCoursesBot.Interfaces;
+﻿using ITCoursesBot.Interfaces;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 
 namespace ITCoursesBot.ITCoursesBot.Controllers
 {
-    public class QuizController : BaseController
+    public class ButtonHanlderController : BaseController
     {
         private readonly IUserStateStore _store;
-        private readonly IMessageService _msg;
         private readonly IOpenAIClient _ai;
-        private readonly IQuestionRepository _repo;
+        private readonly IQuizRepository _repo;
 
-        public QuizController(
-            ITelegramBotClient bot,
-            IUserStateStore store,
-            IMessageService msg,
-            IOpenAIClient ai,
-            IQuestionRepository repo
-        ) : base(bot)
+        public ButtonHanlderController(ITelegramBotClient bot,
+            IMessageService messageService,
+            ISessionManager sessionManager) : base(bot, messageService, sessionManager)
         {
-            _store = store;
-            _msg = msg;
-            _ai = ai;
-            _repo = repo;
+
+        }
+
+        public override bool CanHandle()
+        {
+            var session = GetCurrentSessionById(ChatId);
+            if (session == null)
+                return false;
+
+            if (session.Mode != BotMode.None)
+                return false;
+
+            if (CurrentUpdate == null)
+                return false;
+
+            var butttonName = CurrentUpdate?.CallbackQuery?.Data;
+
+            if (string.IsNullOrEmpty(butttonName))
+                return false;   
+
+            return true;
         }
 
         public override async Task<bool> HandleAsync(CancellationToken ct)
         {
-            // 0. Загружаем или создаём состояние пользователя
-            var state = await _store.GetAsync(ChatId) ?? new UserState();
+            var session = GetCurrentSessionById(ChatId);
+            var butttonName = CurrentUpdate?.CallbackQuery?.Data;
 
-            // 1) Пользователь нажал кнопку "Вопросы к урокам"
-            if (Update.CallbackQuery?.Data == "questions")
+            if (butttonName == KeyboardBuilder.BEGIN_QUIZ_BUTTON_NAME)
             {
-                state.Mode = BotMode.Questions;
-                await _msg.SendTextAsync(
-                    chatId: ChatId,
-                    text: "Введите номер урока:",
-                    cancellationToken: ct
-                );
-                await _store.SetAsync(ChatId, state);
+                await _messageService.SendTextAsync(ChatId, "Введите номер урока:", cancellationToken: ct);
+                session.Mode = BotMode.BeginQuiz;
+                return true;
+
+            }
+            if (butttonName == "progress")
+            {
+                await _messageService.SendTextAsync(ChatId, "Введите номер урока:", cancellationToken: ct);
+                session.Mode = BotMode.None;
                 return true;
             }
+            return false;
 
-            // 2) Ждём номер урока
-            if (state.Mode == BotMode.Questions
-                && state.AwaitLessonNumber
-                && Update.Message?.Text is string lessonId)
+
+          /* if (session.AwaitLessonNumber && CurrentUpdate.Message?.Text is string lessonId)
             {
-                var questions =  _repo.GetQuestionsByLessonAsync(lessonId, ct);
+                var questions = _repo.GetQuestionsByLessonAsync(lessonId, ct);
                 if (questions == null || questions.Count == 0)
                 {
                     await _msg.SendTextAsync(
@@ -75,11 +86,11 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
             // 3) Обрабатываем ответ на текущий вопрос
             if (state.Mode == BotMode.Questions
                 && state.AwaitAnswer
-                && (Update.Message?.Text != null || Update.Message?.Voice != null))
+                && (CurrentUpdate.Message?.Text != null || CurrentUpdate.Message?.Voice != null))
             {
                 // Если голос — преобразуем в текст. Здесь пример, реальную логику распознавания вставьте сами
-                var userText = Update.Message.Text
-                               ?? await DownloadVoiceAsTextAsync(Update.Message.Voice!, ct);
+                var userText = CurrentUpdate.Message.Text
+                               ?? await DownloadVoiceAsTextAsync(CurrentUpdate.Message.Voice!, ct);
 
                 var question = state.Questions![state.Index];
                 var eval = await _ai.EvaluateAsync(question, userText, ct);
@@ -123,15 +134,15 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
             }
 
             // Если ни одно условие не сработало — пропускаем апдейт дальше
-            return false;
+            return false;*/
         }
 
-        private Task SendCurrentQuestionAsync(UserState state, CancellationToken ct)
+      /*  private Task SendCurrentQuestionAsync(UserState state, CancellationToken ct)
             => _msg.SendTextAsync(
                 chatId: ChatId,
                 text: $"❓ Вопрос {state.Index + 1}/{state.Questions!.Count}:\n{state.Questions[state.Index]}",
                 cancellationToken: ct
-            );
+            );*/
 
         private async Task<string> DownloadVoiceAsTextAsync(Voice voice, CancellationToken ct)
         {
