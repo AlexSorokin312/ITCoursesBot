@@ -1,4 +1,5 @@
-﻿using Telegram.Bot;
+﻿using ITCoursesBot.Interfaces;
+using Telegram.Bot;
 using Telegram.Bot.Types;
 
 public class StartCommandHandler : IUpdateHandler

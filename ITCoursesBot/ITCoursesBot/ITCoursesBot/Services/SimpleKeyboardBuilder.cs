@@ -1,19 +1,5 @@
-﻿using Telegram.Bot.Types.ReplyMarkups;
-
-public interface IKeyboardBuilder
-{
-    InlineKeyboardMarkup Build();
-
-    /// <summary>
-    /// Кнопки «Следующий вопрос» (если more=true) и «Завершить»
-    /// </summary>
-    InlineKeyboardMarkup BuildNextFinish(bool more);
-
-    /// <summary>
-    /// Кнопка «В главное меню»
-    /// </summary>
-    InlineKeyboardMarkup BuildBackToMenu();
-}
+﻿using ITCoursesBot.Interfaces;
+using Telegram.Bot.Types.ReplyMarkups;
 
 public class SimpleKeyboardBuilder : IKeyboardBuilder
 {

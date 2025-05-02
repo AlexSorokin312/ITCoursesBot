@@ -1,4 +1,4 @@
-﻿namespace ITCoursesBot.ITCoursesBot.Services.Telegram
+﻿namespace ITCoursesBot.Interfaces
 {
     public interface ITelegramBotService
     {

@@ -1,4 +1,4 @@
-﻿using ITCoursesBot.ITCoursesBot.Services.OpenAI;
+﻿using ITCoursesBot.Interfaces;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 

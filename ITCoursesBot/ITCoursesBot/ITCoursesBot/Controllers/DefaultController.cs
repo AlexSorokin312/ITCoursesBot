@@ -3,10 +3,20 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Telegram.Bot;
 
 namespace ITCoursesBot.ITCoursesBot.Controllers
 {
-    internal class DefaultController
+    public class DefaultController : BaseController
     {
+
+        public DefaultController(ITelegramBotClient bot) : base(bot)
+        {
+        }
+
+        public override Task<bool> HandleAsync(CancellationToken ct)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

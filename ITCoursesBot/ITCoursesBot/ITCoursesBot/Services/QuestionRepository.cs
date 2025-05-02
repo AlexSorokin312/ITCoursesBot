@@ -1,11 +1,7 @@
-﻿public interface IQuestionRepository
-{
-    List<string> GetQuestionsForInterviewBlockAsync(string block, CancellationToken ct = default);
-    List<string>  GetQuestionsByLessonAsync(string block, CancellationToken ct = default);
-}
+﻿using ITCoursesBot.Interfaces;
+
 public class QuestionRepository : IQuestionRepository
 {
-
     public Dictionary<string, List<string>> course { get; } = new()
     {
         ["База21"] = new() { 

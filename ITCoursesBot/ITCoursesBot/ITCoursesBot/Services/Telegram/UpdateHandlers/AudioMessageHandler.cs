@@ -1,6 +1,6 @@
-﻿using ITCoursesBot.ITCoursesBot.Services.OpenAI;
-using Telegram.Bot.Types;
+﻿using Telegram.Bot.Types;
 using Telegram.Bot;
+using ITCoursesBot.Interfaces;
 
 public class AudioMessageHandler : IUpdateHandler
 {

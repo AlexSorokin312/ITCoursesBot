@@ -1,14 +1,11 @@
-﻿using ITCoursesBot.ITCoursesBot.Services.Telegram;
-using Telegram.Bot.Types;
+﻿using Telegram.Bot.Types;
 using Telegram.Bot;
 using System.Collections.Concurrent;
-using ITCoursesBot.ITCoursesBot.Services.OpenAI;
 using ITCoursesBot.ITCoursesBot.Configuration;
 using System.Text;
+using ITCoursesBot.Interfaces;
 
 
-// ------------- перечисления/классы для состояния ------------------------------------------------
-public enum BotMode { None, Questions, CodeExplain, MockInterview, Dialog }
 
 public class TelegramBotService : ITelegramBotService
 {

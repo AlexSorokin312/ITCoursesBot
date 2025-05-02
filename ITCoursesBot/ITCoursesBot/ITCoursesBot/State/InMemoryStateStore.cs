@@ -1,12 +1,23 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿// State/InMemoryStateStore.cs
+using ITCoursesBot.Interfaces;
+using System.Collections.Concurrent;
 
-namespace ITCoursesBot.ITCoursesBot.State
+public class InMemoryStateStore : IUserStateStore
 {
-    internal class InMemoryStateStore
+    private readonly ConcurrentDictionary<long, UserState> _dict = new();
+
+    public Task<UserState?> GetAsync(long chatId)
+        => Task.FromResult(_dict.TryGetValue(chatId, out var s) ? s : null);
+
+    public Task SetAsync(long chatId, UserState state)
     {
+        _dict[chatId] = state;
+        return Task.CompletedTask;
+    }
+
+    public Task ClearAsync(long chatId)
+    {
+        _dict.TryRemove(chatId, out _);
+        return Task.CompletedTask;
     }
 }

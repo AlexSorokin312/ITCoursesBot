@@ -1,148 +1,153 @@
-﻿using ITCoursesBot.ITCoursesBot.Configuration;
-using ITCoursesBot.ITCoursesBot.Models;
-using ITCoursesBot.ITCoursesBot.Services.OpenAI;
-using System.Net.Http.Headers;
+﻿// Services/OpenAI/OpenAIClient.cs
+using System;
+using System.IO;
+using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
+using ITCoursesBot.Interfaces;
+using ITCoursesBot.ITCoursesBot.Configuration;
+using ITCoursesBot.ITCoursesBot.Models;
+using ITCoursesBot.ITCoursesBot.Services.OpenAI;
 
-namespace ITCoursesBot.Services
+namespace ITCoursesBot.ITCoursesBot.Services.OpenAI
 {
     public class OpenAIClient : IOpenAIClient
     {
         private readonly HttpClient _httpClient;
-        private readonly OpenAISettings _openAISettings;
+        private readonly OpenAISettings _settings;
 
-        public OpenAIClient(HttpClient httpClient, OpenAISettings openAISettings)
+        public OpenAIClient(HttpClient httpClient, OpenAISettings settings)
         {
             _httpClient = httpClient;
-            _openAISettings = openAISettings;
+            _settings = settings;
             _httpClient.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", _openAISettings.ApiKey);
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", settings.ApiKey);
         }
 
         public async Task<string> GetChatResponseAsync(string userMessage)
-        {
-            var requestBody = new
-            {
-                model = "gpt-4.1", // укажите нужную модель
-                messages = new object[]
-                {
-                    new
-                    {
-                        role = "system",
-                        // Используем инструкции из конфигурационного файла
-                        content = _openAISettings.InstructionsDialog
-                    },
-                    new
-                    {
-                        role = "user",
-                        content = userMessage
-                    }
-                }
-            };
-
-            string jsonRequest = JsonSerializer.Serialize(requestBody);
-            using var content = new StringContent(jsonRequest, Encoding.UTF8, "application/json");
-
-            HttpResponseMessage response = await _httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content);
-            if (!response.IsSuccessStatusCode)
-            {
-                string errorResponse = await response.Content.ReadAsStringAsync();
-                return $"Ошибка при обращении к OpenAI API: {response.StatusCode}\n{errorResponse}";
-            }
-
-            string responseJson = await response.Content.ReadAsStringAsync();
-            ChatResponse chatResponse;
-            try
-            {
-                chatResponse = JsonSerializer.Deserialize<ChatResponse>(responseJson);
-            }
-            catch (Exception ex)
-            {
-                return $"Ошибка при разборе ответа: {ex.Message}";
-            }
-
-            if (chatResponse == null || chatResponse.choices == null || chatResponse.choices.Length == 0)
-                return "Не удалось извлечь ответ ассистента.";
-
-            return chatResponse.choices[0].message.content.Trim();
-        }
-
+            => await GetChatResponseAsync(_settings.InstructionsDialog, userMessage);
 
         public async Task<string> GetChatResponseAsync(string systemInstructions, string userMessage)
         {
-            var requestBody = new
+            var body = new
             {
-                model = "gpt-4.1",
+                model = "gpt-4",
                 messages = new object[]
                 {
-                new { role = "system", content = systemInstructions ?? throw new ArgumentNullException(nameof(systemInstructions)) },
-                new { role = "user",   content = userMessage        ?? string.Empty }
+                    new { role = "system", content = systemInstructions },
+                    new { role = "user",   content = userMessage }
                 }
             };
+            var content = new StringContent(
+                JsonSerializer.Serialize(body),
+                Encoding.UTF8,
+                "application/json"
+            );
 
-            var jsonRequest = JsonSerializer.Serialize(requestBody);
-            using var content = new StringContent(jsonRequest, Encoding.UTF8, "application/json");
-            var response = await _httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                var err = await response.Content.ReadAsStringAsync();
-                return $"Ошибка OpenAI: {response.StatusCode}\n{err}";
-            }
-
-            var respJson = await response.Content.ReadAsStringAsync();
-            var chatResp = JsonSerializer.Deserialize<ChatResponse>(respJson)
-                           ?? throw new Exception("Пустой ответ от ChatGPT");
-            return chatResp.choices[0].message.content.Trim();
+            using var resp = await _httpClient.PostAsync(
+                "https://api.openai.com/v1/chat/completions",
+                content
+            );
+            resp.EnsureSuccessStatusCode();
+            using var stream = await resp.Content.ReadAsStreamAsync();
+            var doc = await JsonDocument.ParseAsync(stream);
+            var msg = doc.RootElement
+                         .GetProperty("choices")[0]
+                         .GetProperty("message")
+                         .GetProperty("content")
+                         .GetString()
+                         ?.Trim() ?? String.Empty;
+            return msg;
         }
+
+        public async Task<AnswerResult> EvaluateAsync(string questionText,
+                                                      string userAnswer,
+                                                      CancellationToken cancellationToken)
+        {
+            // Формируем промпт для оценки
+            var prompt = $@"
+Вопрос: {questionText}
+Правильный ответ: (вставьте здесь, если он у вас есть в модели вопроса)
+Ответ студента: {userAnswer}
+
+Пожалуйста, верни JSON:
+{{
+  ""isCorrect"": true/false,
+  ""comment"": ""короткий комментарий к ответу""
+}}";
+
+            // Запрашиваем OpenAI
+            var raw = await GetChatResponseAsync(_settings.InstructionsQuestions, prompt);
+
+            // Парсим JSON-ответ
+            try
+            {
+                using var doc = JsonDocument.Parse(raw);
+                var root = doc.RootElement;
+                return new AnswerResult
+                {
+                    IsCorrect = root.GetProperty("isCorrect").GetBoolean(),
+                    Comment = root.GetProperty("comment").GetString() ?? String.Empty
+                };
+            }
+            catch (JsonException)
+            {
+                // Если не JSON, просто возвращаем весь текст как комментарий,
+                // считая, что ответ некорректен
+                return new AnswerResult
+                {
+                    IsCorrect = false,
+                    Comment = raw
+                };
+            }
+        }
+
         public async Task<string> TranscribeAudioAsync(Stream audioStream, string fileName)
         {
-            // Whisper  принимает multipart/form-data
             using var form = new MultipartFormDataContent();
-            // Важно: позиционируемся в начало, иначе будет пустой поток
-            if (audioStream.CanSeek) audioStream.Position = 0;
-
+            audioStream.Position = 0;
             form.Add(new StreamContent(audioStream), "file", fileName);
             form.Add(new StringContent("whisper-1"), "model");
-            // при желании можно добавить  form.Add(new StringContent("ru"), "language");
 
+            var resp = await _httpClient.PostAsync(
+                "https://api.openai.com/v1/audio/transcriptions",
+                form
+            );
+            resp.EnsureSuccessStatusCode();
 
-            HttpResponseMessage response =
-                await _httpClient.PostAsync("https://api.openai.com/v1/audio/transcriptions", form);
-
-            if (!response.IsSuccessStatusCode)
-                return $"Ошибка Whisper API: {response.StatusCode}\n{await response.Content.ReadAsStringAsync()}";
-
-            string json = await response.Content.ReadAsStringAsync();
-            using var doc = JsonDocument.Parse(json);
-            // в /v1/audio/transcriptions поле "text" – сама расшифровка
-            return doc.RootElement.GetProperty("text").GetString() ?? string.Empty;
+            using var stream = await resp.Content.ReadAsStreamAsync();
+            using var doc = await JsonDocument.ParseAsync(stream);
+            return doc.RootElement.GetProperty("text").GetString() ?? String.Empty;
         }
 
-        public async Task<Stream> GenerateSpeechAsync(string text, string model = "tts-1", string voice = "alloy", string format = "opus")
+        public async Task<Stream> GenerateSpeechAsync(string text,
+                                                      string model = "tts-1",
+                                                      string voice = "alloy",
+                                                      string format = "opus")
         {
-            // Формируем тело запроса
             var payload = new
             {
                 model = model,
                 input = text,
                 voice = voice,
-                response_format = format    // по умолчанию opus для Telegram Voice
+                response_format = format
             };
-            string json = JsonSerializer.Serialize(payload);
+            var content = new StringContent(
+                JsonSerializer.Serialize(payload),
+                Encoding.UTF8,
+                "application/json"
+            );
 
-            using var content = new StringContent(json, Encoding.UTF8, "application/json");
-            HttpResponseMessage response =
-                await _httpClient.PostAsync("https://api.openai.com/v1/audio/speech", content);
+            using var resp = await _httpClient.PostAsync(
+                "https://api.openai.com/v1/audio/speech",
+                content
+            );
+            resp.EnsureSuccessStatusCode();
 
-            if (!response.IsSuccessStatusCode)
-                throw new HttpRequestException(
-                    $"Ошибка TTS API: {response.StatusCode}\n{await response.Content.ReadAsStringAsync()}");
-
-            // Читаем бинарный ответ в поток
             var ms = new MemoryStream();
-            await response.Content.CopyToAsync(ms);
+            await resp.Content.CopyToAsync(ms);
             ms.Position = 0;
             return ms;
         }

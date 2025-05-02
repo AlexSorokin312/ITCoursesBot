@@ -1,10 +1,10 @@
-﻿using System.Net.Http;
-using Microsoft.Extensions.DependencyInjection;
-using Telegram.Bot;
+﻿using ITCoursesBot.Interfaces;
 using ITCoursesBot.ITCoursesBot.Configuration;
 using ITCoursesBot.ITCoursesBot.Services.OpenAI;
-using ITCoursesBot.ITCoursesBot.Services.Telegram;
-using ITCoursesBot.Services;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Telegram.Bot;
 
 namespace ITCoursesBot
 {
@@ -15,6 +15,12 @@ namespace ITCoursesBot
         /// </summary>
         public static IServiceCollection AddBotServices(this IServiceCollection services, BotSettings settings)
         {
+            var host = Host.CreateDefaultBuilder()
+                .ConfigureAppConfiguration(cfg =>
+                {
+                    cfg.AddJsonFile("appsettings.json", optional: false);
+                });
+
             services.AddSingleton(settings);
             services.AddHttpClient();
 
@@ -29,7 +35,7 @@ namespace ITCoursesBot
 
             services.AddSingleton<ITelegramBotClient>(sp =>
                 new TelegramBotClient(settings.Telegram.ApiKey));
-            services.AddSingleton<ITextToSpeechService, OpenAITtsService>();
+            services.AddSingleton<ITextToSpeechService, TtsService>();
             services.AddSingleton<IKeyboardBuilder, SimpleKeyboardBuilder>();
 
             services.AddTransient<IUpdateHandler, TextMessageHandler>();

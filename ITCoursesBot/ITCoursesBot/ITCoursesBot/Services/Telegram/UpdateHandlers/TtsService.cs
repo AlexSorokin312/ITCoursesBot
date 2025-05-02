@@ -1,19 +1,12 @@
-﻿using ITCoursesBot.ITCoursesBot.Services.OpenAI;
+﻿using ITCoursesBot.Interfaces;
 using Telegram.Bot;
 using Telegram.Bot.Types;
-public interface ITextToSpeechService
-{
-    Task SendSpeechAsync(
-        ITelegramBotClient bot,
-        long chatId,
-        string text,
-        CancellationToken ct);
-}
 
-public class OpenAITtsService : ITextToSpeechService
+
+public class TtsService : ITextToSpeechService
 {
     private readonly IOpenAIClient _openAI;
-    public OpenAITtsService(IOpenAIClient openAI) => _openAI = openAI;
+    public TtsService(IOpenAIClient openAI) => _openAI = openAI;
 
     public async Task SendSpeechAsync(
         ITelegramBotClient bot,

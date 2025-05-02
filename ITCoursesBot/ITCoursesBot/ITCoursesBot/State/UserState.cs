@@ -1,12 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿public enum BotMode { None, Questions, CodeExplain, MockInterview, Dialog }
 
-namespace ITCoursesBot.ITCoursesBot.State
+public class UserState
 {
-    internal class UserState
-    {
-    }
+    public BotMode Mode { get; set; } = BotMode.None;
+    public string? LessonId { get; set; }
+    public List<string>? Questions { get; set; }
+    public int Index { get; set; }
+
+    public bool AwaitLessonNumber => Mode == BotMode.Questions && LessonId is null;
+    public bool AwaitAnswer => (Mode == BotMode.Questions || Mode == BotMode.MockInterview)
+                                && LessonId is not null && Questions is not null;
 }

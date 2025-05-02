@@ -1,10 +1,6 @@
-﻿// BotWorker.cs
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using System.Threading;
-using System.Threading.Tasks;
 using Telegram.Bot;
-using Microsoft.Extensions.DependencyInjection;
-using Telegram.Bot.Types;
 
 public class BotWorker : BackgroundService
 {
@@ -22,7 +18,7 @@ public class BotWorker : BackgroundService
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            var updates = await _bot.GetUpdatesAsync(_offset, cancellationToken: stoppingToken);
+            var updates = await _bot.GetUpdates(_offset, cancellationToken: stoppingToken);
             foreach (var upd in updates)
             {
                 _offset = upd.Id + 1;
