@@ -1,4 +1,5 @@
 ﻿using ITCoursesBot.Interfaces;
+using System.Text;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 
@@ -8,14 +9,16 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
     {
         private readonly IUserStateStore _store;
         private readonly IOpenAIClient _ai;
+        private readonly UserProgressRepository _progressRepo;
         private readonly IQuizRepository _repo;
 
         public ButtonHanlderController(ITelegramBotClient bot,
             IMessageService messageService,
             ISessionManager sessionManager,
-            IKeyboardBuilder keyboardBuilder) : base(bot, messageService, sessionManager, keyboardBuilder)
+            IKeyboardBuilder keyboardBuilder,
+            UserProgressRepository progressRepo) : base(bot, messageService, sessionManager, keyboardBuilder)
         {
-
+            _progressRepo = progressRepo;
         }
 
         public override bool CanHandle()
@@ -64,111 +67,42 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
 
             }
 
-
-            return false;
-
-
-          /* if (session.AwaitLessonNumber && CurrentUpdate.Message?.Text is string lessonId)
+            if (butttonName == KeyboardBuilder.USER_PROGRESS_BUTTON_NAME)
             {
-                var questions = _repo.GetQuestionsByLessonAsync(lessonId, ct);
-                if (questions == null || questions.Count == 0)
+                if (!CanHandle())
+                    return false;
+
+                long userId = ChatId;
+
+                var never = await _progressRepo.GetNeverAnsweredCorrectlyAsync(userId);
+                var tricky = await _progressRepo.GetMoreWrongThanRightAsync(userId);
+                var worst = await _progressRepo.GetLessonsWithMostErrorsAsync(userId, 3);
+                var covered = await _progressRepo.GetFullyCoveredLessonsAsync(userId);
+
+                var sb = new StringBuilder("📊 *Ваш прогресс*\n\n")
+                    .AppendLine($"❌ Вопросов без правильного ответа: *{never.Count}*")
+                    .AppendLine($"⚖️  Вопросов, где ошибок больше, чем удачных ответов: *{tricky.Count}*")
+                    .AppendLine("\n🏆 Топ уроков по количеству ошибок:");
+
+                foreach (var l in worst)
+                    sb.AppendLine($"• {l.LessonTitle} — {l.WrongAnswers} (ошибки − правильные)");
+
+                sb.AppendLine("\n✅ Уроки, где вы ответили хотя бы раз на все вопросы:");
+                if (covered.Any())
                 {
-                    await _msg.SendTextAsync(
-                        chatId: ChatId,
-                        text: "Вопросов для этого урока не найдено. Попробуйте другой номер.",
-                        cancellationToken: ct
-                    );
-                    // остаёмся в том же режиме и ждём нового ввода
-                    await _store.SetAsync(ChatId, state);
-                    return true;
-                }
-
-                // Инициализируем викторину
-                state.LessonId = lessonId;
-                state.Questions = questions;
-                state.Index = 0;
-                await _store.SetAsync(ChatId, state);
-
-                await SendCurrentQuestionAsync(state, ct);
-                return true;
-            }
-
-            // 3) Обрабатываем ответ на текущий вопрос
-            if (state.Mode == BotMode.Questions
-                && state.AwaitAnswer
-                && (CurrentUpdate.Message?.Text != null || CurrentUpdate.Message?.Voice != null))
-            {
-                // Если голос — преобразуем в текст. Здесь пример, реальную логику распознавания вставьте сами
-                var userText = CurrentUpdate.Message.Text
-                               ?? await DownloadVoiceAsTextAsync(CurrentUpdate.Message.Voice!, ct);
-
-                var question = state.Questions![state.Index];
-                var eval = await _ai.EvaluateAsync(question, userText, ct);
-
-                // 3.1 Сразу отправляем комментарий от AI
-                await _msg.SendTextAsync(
-                    chatId: ChatId,
-                    text: eval.Comment,
-                    cancellationToken: ct
-                );
-
-                if (eval.IsCorrect)
-                {
-                    state.Index++;
-                    await _store.SetAsync(ChatId, state);
-
-                    if (state.Index < state.Questions.Count)
-                    {
-                        await SendCurrentQuestionAsync(state, ct);
-                    }
-                    else
-                    {
-                        await _msg.SendTextAsync(
-                            chatId: ChatId,
-                            text: "Поздравляю! Тест завершён. Для нового теста нажмите /start.",
-                            cancellationToken: ct
-                        );
-                        await _store.ClearAsync(ChatId);
-                    }
+                    foreach (var l in covered)
+                        sb.AppendLine($"• {l.LessonTitle} ({l.TotalQuestions} вопросов)");
                 }
                 else
                 {
-                    await _msg.SendTextAsync(
-                        chatId: ChatId,
-                        text: "Неправильно, попробуйте ещё раз.",
-                        cancellationToken: ct
-                    );
+                    sb.AppendLine("— пока нет —");
                 }
 
+                // Отправляем пользователю и возвращаем true
+                await _messageService.SendTextAsync(ChatId, sb.ToString());
                 return true;
             }
-
-            // Если ни одно условие не сработало — пропускаем апдейт дальше
-            return false;*/
-        }
-
-      /*  private Task SendCurrentQuestionAsync(UserState state, CancellationToken ct)
-            => _msg.SendTextAsync(
-                chatId: ChatId,
-                text: $"❓ Вопрос {state.Index + 1}/{state.Questions!.Count}:\n{state.Questions[state.Index]}",
-                cancellationToken: ct
-            );*/
-
-        private async Task<string> DownloadVoiceAsTextAsync(Voice voice, CancellationToken ct)
-        {
-            // 1. Получаем информацию о файле
-            var file = await Bot.GetFile(voice.FileId, ct);
-            // :contentReference[oaicite:0]{index=0}
-
-            // 2. Скачиваем файл в память
-            await using var ms = new MemoryStream();
-            await Bot.DownloadFile(file.FilePath!, ms, cancellationToken: ct);
-            ms.Position = 0;
-
-            // 3. Здесь можно передать ms в вашу систему распознавания речи
-            //    например, в Google Speech, Azure Speech или иной движок.
-
-            return "[распознанный текст]";
+            return true;
         }
     }
 }

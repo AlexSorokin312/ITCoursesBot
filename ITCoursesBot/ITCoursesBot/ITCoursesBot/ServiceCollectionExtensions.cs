@@ -43,6 +43,7 @@
 
                 services.AddScoped<QuestionsRepository>();
                 services.AddScoped<UserDbRepository>();
+                services.AddScoped<UserProgressRepository>();
 
                 return services;
             }

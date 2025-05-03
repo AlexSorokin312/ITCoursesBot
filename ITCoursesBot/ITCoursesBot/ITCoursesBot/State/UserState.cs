@@ -1,4 +1,6 @@
-﻿public enum BotMode { None, BeginQuiz, PassQuiz, CodeExplain, MockInterview, Dialog }
+﻿public enum BotMode { None, BeginQuiz, PassQuiz, CodeExplain, MockInterview, Dialog,
+    Progress
+}
 
 public class UserState
 {
