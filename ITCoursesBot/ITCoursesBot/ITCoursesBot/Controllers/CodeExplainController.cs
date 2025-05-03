@@ -49,9 +49,7 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
            await _messageService.SendTextAsync(
                 ChatId,
                 explanation,
-                replyMarkup: _keyboardBuilder.BuildBackToMenu(), 
-                asMarkdown: true,
-                cancellationToken: ct);
+                replyMarkup: _keyboardBuilder.BuildBackToMenu());
 
             return true;
         }

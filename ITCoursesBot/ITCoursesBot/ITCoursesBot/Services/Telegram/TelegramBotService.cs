@@ -72,8 +72,7 @@ public class TelegramBotService : ITelegramBotService
             await _messageService.SendTextAsync(
                 chatId,
                 "Выберите опцию работы с чатом",
-                replyMarkup: _kbBuilder.Build(),
-                cancellationToken: ct);
+                replyMarkup: _kbBuilder.Build());
             _sessions.TryRemove(chatId, out _);          // сбрасываем любую прошлую сессию
             return;
         }
@@ -92,28 +91,25 @@ public class TelegramBotService : ITelegramBotService
                     session.Mode = BotMode.BeginQuiz;
                     session.LessonIdentifier = null;
                     await _messageService.SendTextAsync(chatId,
-                        "Введите идентификатор урока", cancellationToken: ct);
+                        "Введите идентификатор урока");
                     break;
 
                 case "code_explanations":
                     session.Mode = BotMode.CodeExplain;
                     await _messageService.SendTextAsync(chatId,
-                        "Включен режим «Объяснение кода», пришлите фрагмент — я объясню.",
-                        cancellationToken: ct);
+                        "Включен режим «Объяснение кода», пришлите фрагмент — я объясню.");
                     break;
 
                 case "mock_interview":
                     session.Mode = BotMode.MockInterview;
                     await _messageService.SendTextAsync(chatId,
-                        "Выберите раздел собеседования:\n• базовый курс\n• продвинутый курс\n• ООП\n• все блоки",
-                        cancellationToken: ct);
+                        "Выберите раздел собеседования:\n• базовый курс\n• продвинутый курс\n• ООП\n• все блоки");
                     break;
 
                 case "dialog":
                     session.Mode = BotMode.Dialog;
                     await _messageService.SendTextAsync(chatId,
-                        "Вы в режиме диалога. Спрашивайте — отвечаю.",
-                        cancellationToken: ct);
+                        "Вы в режиме диалога. Спрашивайте — отвечаю.");
                     break;
 
                 case "next_question":                           // кнопка «Следующий вопрос»
@@ -123,8 +119,7 @@ public class TelegramBotService : ITelegramBotService
                 case "finish":                                  // кнопка «Завершить»
                     _sessions.TryRemove(chatId, out _);
                     await _messageService.SendTextAsync(chatId,
-                        "Сессия завершена. Чтобы начать заново нажмите /start.",
-                        cancellationToken: ct);
+                        "Сессия завершена. Чтобы начать заново нажмите /start.");
                     break;
             }
 
@@ -139,8 +134,7 @@ public class TelegramBotService : ITelegramBotService
             // пользователь вне контекста: предлагаем меню
             await _messageService.SendTextAsync(chatId,
                 "Выберите опцию работы с чатом",
-                replyMarkup: _kbBuilder.Build(),
-                cancellationToken: ct);
+                replyMarkup: _kbBuilder.Build());
             return;
         }
 
@@ -166,7 +160,7 @@ public class TelegramBotService : ITelegramBotService
                 if (s.QuestionPool.Count == 0)
                 {
                     await _messageService.SendTextAsync(chatId,
-                        "Вопросов для этого урока не найдено. Попробуйте другой номер.", cancellationToken: ct);
+                        "Вопросов для этого урока не найдено. Попробуйте другой номер.");
                     s.LessonIdentifier = null;                           // ждём корректный номер
                     return;
                 }
@@ -194,7 +188,7 @@ public class TelegramBotService : ITelegramBotService
                                    .Trim();
 
                 // отправляем объяснение/комментарий
-                await _messageService.SendTextAsync(chatId, cleaned, cancellationToken: ct);
+                await _messageService.SendTextAsync(chatId, cleaned);
 
                 if (isCorrect)
                 {
@@ -205,13 +199,13 @@ public class TelegramBotService : ITelegramBotService
 
                     await _messageService.SendTextAsync(chatId,
                         more ? "Правильно! Переходим к следующему?" : "Правильно! Это был последний вопрос.",
-                        replyMarkup: kb, cancellationToken: ct);
+                        replyMarkup: kb);
                 }
                 else
                 {
                     // ждём новую попытку, ничего не меняем
                     await _messageService.SendTextAsync(chatId,
-                        "Попробуйте ещё раз — уточните ответ.", cancellationToken: ct);
+                        "Попробуйте ещё раз — уточните ответ.");
                 }
 
                 return;
@@ -226,9 +220,7 @@ public class TelegramBotService : ITelegramBotService
             await _messageService.SendTextAsync(
                 chatId,
                 explanation,
-                replyMarkup: _kbBuilder.BuildBackToMenu(),
-                asMarkdown: true,
-                cancellationToken: ct);
+                replyMarkup: _kbBuilder.BuildBackToMenu());
 
 
             return;
@@ -246,7 +238,7 @@ public class TelegramBotService : ITelegramBotService
                 if (s.QuestionPool.Count == 0)
                 {
                     await _messageService.SendTextAsync(chatId,
-                        "Раздел не распознан или в нём нет вопросов. Попробуйте другой.", cancellationToken: ct);
+                        "Раздел не распознан или в нём нет вопросов. Попробуйте другой.");
                     return;
                 }
 
@@ -260,7 +252,7 @@ public class TelegramBotService : ITelegramBotService
             string q = s.QuestionPool![s.QuestionIndex];
             string prompt = $"Ты интервьюер. Задай фоллоу-апы при необходимости. Вопрос: {q}\nОтвет кандидата: {msg!.Text}";
             string feedback = await _openAi.GetChatResponseAsync(systemInst, prompt);
-            await _messageService.SendTextAsync(chatId, feedback, cancellationToken: ct);
+            await _messageService.SendTextAsync(chatId, feedback);
 
             // сразу следующий вопрос
             await SendNextQuestionAsync(chatId, s, ct);
@@ -271,7 +263,7 @@ public class TelegramBotService : ITelegramBotService
         if (s.Mode == BotMode.Dialog)
         {
             string answer = await _openAi.GetChatResponseAsync(systemInst, msg!.Text);
-            await _messageService.SendTextAsync(chatId, answer, cancellationToken: ct);
+            await _messageService.SendTextAsync(chatId, answer);
             return;
         }
     }
@@ -284,16 +276,14 @@ public class TelegramBotService : ITelegramBotService
         if (s.QuestionPool is null || s.QuestionIndex >= s.QuestionPool.Count)
         {
             await _messageService.SendTextAsync(chatId,
-                "Вопросы закончились. Нажмите /start, чтобы начать заново.",
-                cancellationToken: ct);
+                "Вопросы закончились. Нажмите /start, чтобы начать заново.");
             _sessions.TryRemove(chatId, out _);
             return;
         }
 
         string next = s.QuestionPool[s.QuestionIndex];
         await _messageService.SendTextAsync(chatId,
-            $"❓ Вопрос {s.QuestionIndex + 1}/{s.QuestionPool.Count}:\n{next}",
-            cancellationToken: ct);
+            $"❓ Вопрос {s.QuestionIndex + 1}/{s.QuestionPool.Count}:\n{next}");
     }
 
     private Task HandleErrorAsync( ITelegramBotClient bot, Exception ex,CancellationToken ct)

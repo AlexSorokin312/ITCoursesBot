@@ -22,12 +22,18 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
 
             var msg = CurrentUpdate.Message;
 
-            await _messageService.SendTextAsync(
-                ChatId,
-                "Выберите опцию работы с чатом",
-                replyMarkup: _keyboardBuilder.Build(),
-                cancellationToken: ct);
-            _sessionManager.GetOrCreateSession(ChatId);
+            try
+            {
+                await _messageService.SendTextAsync(
+                    ChatId,
+                    "Выберите опцию работы с чатом",
+                    replyMarkup: _keyboardBuilder.Build());
+                _sessionManager.GetOrCreateSession(ChatId);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
             return true;
         }
 
