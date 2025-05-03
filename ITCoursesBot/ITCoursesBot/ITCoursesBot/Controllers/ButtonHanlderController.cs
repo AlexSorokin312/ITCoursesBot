@@ -42,7 +42,7 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
 
             if (butttonName == KeyboardBuilder.BEGIN_QUIZ_BUTTON_NAME)
             {
-                await _messageService.SendTextAsync(ChatId, "Введите номер урока:", _keyboardBuilder.BuildBackToMenu(), cancellationToken: ct);
+                await _messageService.SendTextAsync(ChatId, "Введите номер урока:", _keyboardBuilder.BuildBackToMenu());
                 session.Mode = BotMode.BeginQuiz;
                 return true;
 
@@ -50,7 +50,7 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
 
             if (butttonName == KeyboardBuilder.CODE_EXPLANATION_BUTTON_NAME)
             {
-                await _messageService.SendTextAsync(ChatId, "Включен режим «Объяснение кода», пришлите фрагмент — я объясню.", cancellationToken: ct);
+                await _messageService.SendTextAsync(ChatId, "Включен режим «Объяснение кода», пришлите фрагмент — я объясню.");
                 session.Mode = BotMode.CodeExplain;
                 return true;
 
@@ -58,7 +58,7 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
 
             if (butttonName == KeyboardBuilder.BACK_TO_MENU_BUTTON_NAME)
             {
-                await _messageService.SendTextAsync(ChatId, "Выберите режим работы с чатом:", _keyboardBuilder.Build(), cancellationToken: ct);
+                await _messageService.SendTextAsync(ChatId, "Выберите режим работы с чатом:", _keyboardBuilder.Build());
                 session.Mode = BotMode.None;
                 return true;
 

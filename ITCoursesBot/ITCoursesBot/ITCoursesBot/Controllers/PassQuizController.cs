@@ -114,8 +114,7 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
             await _messageService.SendTextAsync(
                 ChatId,
                 "Выберите опцию работы с чатом",
-                replyMarkup: _keyboardBuilder.Build(),
-                cancellationToken: ct
+                replyMarkup: _keyboardBuilder.Build()
             );
         }
 
@@ -131,8 +130,7 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
             {
                 await _messageService.SendTextAsync(
                     ChatId,
-                    "Вопросов для этого урока не найдено. Попробуйте другой номер.",
-                    cancellationToken: ct
+                    "Вопросов для этого урока не найдено. Попробуйте другой номер."
                 );
                 return true; // апдейт «съеден»
             }
@@ -156,8 +154,7 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
             // комментарий от AI
             await _messageService.SendTextAsync(
                 ChatId,
-                comment,
-                cancellationToken: ct
+                comment
             );
 
             if (isCorrect)
@@ -169,8 +166,7 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
             {
                 await _messageService.SendTextAsync(
                     ChatId,
-                    "Попробуйте ещё раз — уточните ответ.",
-                    cancellationToken: ct
+                    "Попробуйте ещё раз — уточните ответ."
                 );
             }
         }
@@ -199,8 +195,7 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
                 hasMore
                     ? "Правильно! Переходим к следующему?"
                     : "Правильно! Это был последний вопрос.",
-                replyMarkup: kb,
-                cancellationToken: ct
+                replyMarkup: kb
             );
         }
 
@@ -217,8 +212,7 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
 
                 await _messageService.SendTextAsync(
                     ChatId,
-                    "Вопросы закончились. Нажмите /start, чтобы начать заново.",
-                    cancellationToken: ct
+                    "Вопросы закончились. Нажмите /start, чтобы начать заново."
                 );
             }
             else
@@ -226,8 +220,7 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
                 string next = session.QuestionsForQuiz[session.QuestionIndex];
                 await _messageService.SendTextAsync(
                     ChatId,
-                    $"❓ Вопрос {session.QuestionIndex + 1}/{session.QuestionsForQuiz.Count}:\n{next}",
-                    cancellationToken: ct
+                    $"❓ Вопрос {session.QuestionIndex + 1}/{session.QuestionsForQuiz.Count}:\n{next}"
                 );
             }
         }

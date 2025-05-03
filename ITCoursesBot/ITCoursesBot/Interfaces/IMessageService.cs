@@ -4,10 +4,9 @@ public interface IMessageService
 {
     Task SendTextAsync(
         long chatId,
-        string text,
+        string rawText,
         InlineKeyboardMarkup? replyMarkup = null,
-        bool asMarkdown = false,
-        CancellationToken cancellationToken = default);
+        CancellationToken     ct          = default);
 
     Task SendVoiceAsync(
         long chatId,
