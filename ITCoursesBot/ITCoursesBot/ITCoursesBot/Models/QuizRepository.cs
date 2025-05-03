@@ -1,32 +1,35 @@
 ﻿using ITCoursesBot.Interfaces;
+using Microsoft.Extensions.Configuration;
 
 public class QuizRepository : IQuizRepository
 {
-    public Dictionary<string, List<string>> course { get; } = new()
+    public QuizRepository(IConfiguration config)
     {
-        ["База21"] = new() { 
-            "Что такое переменная?",
-            "Что такое инициализация переменной и чем отличается от объявления переменной?"
-        },
+        var builder = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("quizData.json", optional: false, reloadOnChange: false);
+        IConfiguration cfg = builder.Build();
 
-        ["База22"] = new() {
-            "Что такое тип переменных?",
-            "Назовите хотя бы один тип для хранения: текста, целых чисел и дробных чисел",
-            "Чем стоит руководствоваться при выборе типа переменной?"
+        _course = cfg
+            .GetSection("QuizData")
+            .Get<Dictionary<string, List<string>>>()
+            ?? throw new InvalidOperationException("Секция QuizData не найдена в quizData.json");
+    }
 
-        },
+    private readonly Dictionary<string, List<string>> _course;
 
-    };
 
     public List<string> GetQuestionsByLessonAsync(string block, CancellationToken ct = default)
     {
-        var questions = course[block];
+        var questions = _course[block];
         return questions;
 
     }
 
     public List<string> GetQuestionsForInterviewBlockAsync(string block, CancellationToken ct = default)
     {
+        throw new NotFiniteNumberException();
+
         throw new NotImplementedException();
     }
 }
