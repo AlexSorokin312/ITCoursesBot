@@ -1,4 +1,7 @@
-﻿using System;
+﻿// TelegramMessageService.cs
+// .NET 6 · Telegram.Bot 18.x
+
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -10,51 +13,45 @@ using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 
 /// <summary>
-/// Отправляет текст и голос, превращая Markdown‑похожие маркеры в массив MessageEntity.
+/// Отправляет текст и голос, превращая простую Markdown-подобную разметку
+/// ( **bold**, *italic*, `inline`, ```block``` ) в массив MessageEntity,
+/// пропуская возможный языковой stub (csharp, lua, copy) перед блоком кода.
 /// </summary>
-public class TelegramMessageService : IMessageService
+public sealed class TelegramMessageService : IMessageService
 {
     private readonly ITelegramBotClient _bot;
 
-    public TelegramMessageService(ITelegramBotClient bot)
-        => _bot = bot;
+    public TelegramMessageService(ITelegramBotClient bot) => _bot = bot;
 
     public async Task SendTextAsync(
         long chatId,
         string rawText,
         InlineKeyboardMarkup? replyMarkup = null,
-        CancellationToken ct = default)
+        CancellationToken cancellationToken = default)
     {
-        // 1) распарсим Markdown-подобную разметку в "plain" и соберём MessageEntity[]
         var (plain, entities) = ParseMarkdownLike(rawText);
 
-        // 2) отправляем через настоящий метод SendTextMessageAsync:
         await _bot.SendMessage(
             chatId: chatId,
             text: plain,
-            parseMode: ParseMode.None,   // не нужен, мы передаём entities
+            parseMode: ParseMode.None,
             entities: entities,
-            disableNotification: false,
             replyMarkup: replyMarkup,
-            cancellationToken: ct);
+            cancellationToken: cancellationToken);
     }
 
     public async Task SendVoiceAsync(
         long chatId,
         Stream voiceStream,
         string fileName,
-        CancellationToken ct = default)
+        CancellationToken cancellationToken = default)
     {
         await _bot.SendVoice(
             chatId: chatId,
             voice: InputFile.FromStream(voiceStream, fileName),
-            cancellationToken: ct);
+            cancellationToken: cancellationToken);
     }
 
-    /// <summary>
-    /// Разбирает "**bold**", "*italic*", "`inline`", "```block```"
-    /// и возвращает plain-text + массив MessageEntity.
-    /// </summary>
     private static (string Plain, MessageEntity[] Entities) ParseMarkdownLike(string md)
     {
         var entities = new List<MessageEntity>();
@@ -63,12 +60,22 @@ public class TelegramMessageService : IMessageService
 
         for (int i = 0; i < md.Length;)
         {
-            // 1) ```block```
-            if (i + 3 <= md.Length && md.Substring(i, 3) == "```")
+            // 1) ```code-block``` (возможен stub перед кодом)
+            if (i + 3 <= md.Length && md[i] == '`' && md[i + 1] == '`' && md[i + 2] == '`')
             {
-                int end = md.IndexOf("```", i + 3, StringComparison.Ordinal);
+                int langStart = i + 3;
+                int firstNl = md.IndexOf('\n', langStart);
+                if (firstNl < 0) firstNl = langStart;
+
+                string potentialLang = md.Substring(langStart, firstNl - langStart);
+                bool hasLangStub = potentialLang.Length > 0 && IsAlphaNum(potentialLang);
+
+                int codeStart = hasLangStub ? firstNl + 1 : langStart;
+                int end = md.IndexOf("```", codeStart, StringComparison.Ordinal);
                 if (end < 0) end = md.Length;
-                string code = md.Substring(i + 3, end - (i + 3));
+
+                string rawCode = md.Substring(codeStart, end - codeStart);
+                string code = StripLangStub(rawCode);
 
                 entities.Add(new MessageEntity
                 {
@@ -104,30 +111,26 @@ public class TelegramMessageService : IMessageService
             }
 
             // 3) **bold**
-            if (i + 2 < md.Length && md[i] == '*' && md[i + 1] == '*')
+            if (i + 1 < md.Length && md[i] == '*' && md[i + 1] == '*')
             {
                 int end = md.IndexOf("**", i + 2, StringComparison.Ordinal);
                 if (end < 0)
                 {
-                    // не нашли закрывающих — просто копируем символ
-                    sb.Append(md[i]);
-                    utf16Pos++;
-                    i++;
+                    AppendChar(md[i++]);
+                    continue;
                 }
-                else
-                {
-                    string bold = md.Substring(i + 2, end - (i + 2));
-                    entities.Add(new MessageEntity
-                    {
-                        Type = MessageEntityType.Bold,
-                        Offset = utf16Pos,
-                        Length = bold.Length
-                    });
 
-                    sb.Append(bold);
-                    utf16Pos += bold.Length;
-                    i = end + 2;
-                }
+                string bold = md.Substring(i + 2, end - (i + 2));
+                entities.Add(new MessageEntity
+                {
+                    Type = MessageEntityType.Bold,
+                    Offset = utf16Pos,
+                    Length = bold.Length
+                });
+
+                sb.Append(bold);
+                utf16Pos += bold.Length;
+                i = end + 2;
                 continue;
             }
 
@@ -137,33 +140,57 @@ public class TelegramMessageService : IMessageService
                 int end = md.IndexOf('*', i + 1);
                 if (end < 0)
                 {
-                    sb.Append(md[i]);
-                    utf16Pos++;
-                    i++;
+                    AppendChar(md[i++]);
+                    continue;
                 }
-                else
-                {
-                    string italic = md.Substring(i + 1, end - (i + 1));
-                    entities.Add(new MessageEntity
-                    {
-                        Type = MessageEntityType.Italic,
-                        Offset = utf16Pos,
-                        Length = italic.Length
-                    });
 
-                    sb.Append(italic);
-                    utf16Pos += italic.Length;
-                    i = end + 1;
-                }
+                string italic = md.Substring(i + 1, end - (i + 1));
+                entities.Add(new MessageEntity
+                {
+                    Type = MessageEntityType.Italic,
+                    Offset = utf16Pos,
+                    Length = italic.Length
+                });
+
+                sb.Append(italic);
+                utf16Pos += italic.Length;
+                i = end + 1;
                 continue;
             }
 
-            // 5) всё остальное
-            sb.Append(md[i]);
-            utf16Pos++;
-            i++;
+            // 5) обычный символ
+            AppendChar(md[i++]);
         }
 
         return (sb.ToString(), entities.ToArray());
+
+        void AppendChar(char c)
+        {
+            sb.Append(c);
+            utf16Pos += 1;
+        }
+
+        static bool IsAlphaNum(string s)
+        {
+            foreach (char ch in s)
+                if (!char.IsLetterOrDigit(ch)) return false;
+            return true;
+        }
+
+        static string StripLangStub(string code)
+        {
+            int nl = code.IndexOf('\n');
+            if (nl < 0) return code;
+
+            string firstLine = code.Substring(0, nl).Trim();
+            if (firstLine.Equals("csharp", StringComparison.OrdinalIgnoreCase) ||
+                firstLine.Equals("lua", StringComparison.OrdinalIgnoreCase) ||
+                firstLine.Equals("copy", StringComparison.OrdinalIgnoreCase))
+            {
+                return code[(nl + 1)..];
+            }
+
+            return code;
+        }
     }
 }

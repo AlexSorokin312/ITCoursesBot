@@ -25,7 +25,7 @@ namespace ITCoursesBot.ITCoursesBot.Services.OpenAI
         {
             var body = new
             {
-                model = "gpt-4",
+                model = "gpt-4.1",
                 messages = new object[]
                 {
                     new { role = "system", content = systemInstructions },
