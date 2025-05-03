@@ -12,7 +12,7 @@ public interface IDataService
     Task<List<Course>> GetAllCoursesAsync();
 
     Task<Lesson> AddLessonAsync(int courseId, string lessonName);
-    Task<List<Lesson>> GetLessonsByCourseAsync(int courseId);
+    Task<List<Lesson    >> GetLessonsByCourseAsync(int courseId);
 
     Task<Question> AddQuestionAsync(int lessonId, string text);
     Task<List<Question>> GetQuestionsByLessonAsync(int lessonId);

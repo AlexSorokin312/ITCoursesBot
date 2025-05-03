@@ -24,7 +24,7 @@ public class BotWorker : BackgroundService
                 _offset = upd.Id + 1;
                 using var scope = _sp.CreateScope();
                 var router = scope.ServiceProvider.GetRequiredService<UpdateRouter>();
-                _ = router.RouteAsync(upd, stoppingToken);
+                await router.RouteAsync(upd, stoppingToken);
             }
         }
     }

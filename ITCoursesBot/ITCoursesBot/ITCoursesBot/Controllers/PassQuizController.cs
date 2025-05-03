@@ -10,7 +10,8 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
         private readonly IOpenAIClient _openAi;
         private readonly OpenAISettings _openAISettings;
         private readonly IQuizRepository _quizRepository;
-        private readonly DBRepository _repository;
+        private readonly QuestionsRepository _repository;
+        private readonly UserDbRepository _userDbRepository;
 
         public PassQuizController(
             ITelegramBotClient bot,
@@ -20,12 +21,14 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
             IOpenAIClient openAi,
             OpenAISettings openAISettings,
             IQuizRepository quizRepository,
-            DBRepository repository) : base(bot, messageService, sessionManager, keyboardBuilder)
+            QuestionsRepository repository,
+            UserDbRepository userDbRepository) : base(bot, messageService, sessionManager, keyboardBuilder)
         {
             _openAi = openAi;
             _openAISettings = openAISettings;
             _quizRepository = quizRepository;
             _repository = repository;
+            _userDbRepository = userDbRepository;
         }
 
         public override async Task<bool> HandleAsync(CancellationToken ct)
@@ -53,6 +56,8 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
                     fileName: $"{msg.Voice.FileUniqueId}.ogg"
                 );
             }
+
+            await _userDbRepository.UpdateUsageAsync(session.ChatId);
 
             if (string.IsNullOrWhiteSpace(answerText))
                 return false;   // ни текст, ни голос
@@ -128,7 +133,7 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
                 return false;
 
             // загружаем
-            var questions = _quizRepository.GetQuestionsByLessonAsync(lessonId, ct);
+            var questions = _repository.GetQuestions(lessonId);
             if (questions == null || !questions.Any())
             {
                 await _messageService.SendTextAsync(
@@ -147,19 +152,30 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
         // --- 4. Обработка ответа студента ---
         private async Task ProcessAnswerAsync(ChatSession session, string answerText, CancellationToken ct)
         {
-            var question = session.QuestionsForQuiz![session.QuestionIndex];
-            var systemInst = _openAISettings.InstructionsQuestions;
-            var prompt = $"Вопрос: {question}\nОтвет студента: {answerText}";
+            // 1) достаём DTO вопроса
+            var questionDto = session.QuestionsForQuiz![session.QuestionIndex];
 
+            // 2) формируем prompt для AI
+            var systemInst = _openAISettings.InstructionsQuestions;
+            var prompt = $"Вопрос: {questionDto.Text}\nОтвет студента: {answerText}";
+
+            // 3) получаем ответ от AI и парсим его
             string raw = await _openAi.GetChatResponseAsync(systemInst, prompt);
             var (isCorrect, comment) = ParseAiResponse(raw);
 
-            // комментарий от AI
-            await _messageService.SendTextAsync(
-                ChatId,
-                comment
+            // 4) сохраняем каждую попытку в БД (INSERT новой записи)
+            await _userDbRepository.AddUserAnswerAsync(
+                telegramId: CurrentUpdate.Message!.From!.Id,
+                username: CurrentUpdate.Message.From.Username ?? string.Empty,
+                questionId: questionDto.Id,
+                answerText: answerText,
+                isCorrect: isCorrect
             );
 
+            // 5) шлём пользователю комментарий
+            await _messageService.SendTextAsync(ChatId, comment);
+
+            // 6) если ответ верный — двигаем индекс и предлагаем следующий
             if (isCorrect)
             {
                 session.QuestionIndex++;
@@ -208,22 +224,14 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
             if (session.QuestionsForQuiz == null
                 || session.QuestionIndex >= session.QuestionsForQuiz.Count)
             {
-                // Конец квиза
-                session.Mode = BotMode.None;
-                session.QuestionsForQuiz?.Clear();
-                session.QuestionIndex = 0;
-
-                await _messageService.SendTextAsync(
-                    ChatId,
-                    "Вопросы закончились. Нажмите /start, чтобы начать заново."
-                );
+                // конец квиза…
             }
             else
             {
-                string next = session.QuestionsForQuiz[session.QuestionIndex];
+                var nextDto = session.QuestionsForQuiz[session.QuestionIndex];
                 await _messageService.SendTextAsync(
                     ChatId,
-                    next
+                    $"❓ Вопрос {session.QuestionIndex + 1}/{session.QuestionsForQuiz.Count}:\n{nextDto.Text}"
                 );
             }
         }

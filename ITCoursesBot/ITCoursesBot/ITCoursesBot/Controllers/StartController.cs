@@ -1,39 +1,49 @@
 ﻿using ITCoursesBot.Interfaces;
+using ITCoursesBot.ITCoursesBot.Services;
 using Telegram.Bot;
 
 namespace ITCoursesBot.ITCoursesBot.Controllers
 {
     internal class StartController : BaseController
     {
-
+        public UserDbRepository _userDbRepository;
         public StartController(ITelegramBotClient bot,
             IMessageService messageService,
             IKeyboardBuilder keyboardBuilder,
-            ISessionManager sessionManager) : base(bot, messageService, sessionManager, keyboardBuilder)
+            ISessionManager sessionManager,
+            UserDbRepository userDbRepository) : base(bot, messageService, sessionManager, keyboardBuilder)
         {
-
+            _userDbRepository = userDbRepository;
         }
 
         public override async Task<bool> HandleAsync(CancellationToken ct)
         {
-            var canHandle = CanHandle();
-            if (!canHandle)
-                return false;
+            if (!CanHandle()) return false;
 
-            var msg = CurrentUpdate.Message;
+            var msg = CurrentUpdate.Message!;        
+            var from = msg.From!;                   
 
             try
             {
+                // передаём в репозиторий нужные аргументы
+                var user = await _userDbRepository.AddOrGetAsync(
+                    telegramId: from.Id,
+                    username: from.Username ?? string.Empty
+                );
+
                 await _messageService.SendTextAsync(
                     ChatId,
                     "Выберите опцию работы с чатом",
-                    replyMarkup: _keyboardBuilder.Build());
+                    replyMarkup: _keyboardBuilder.Build()
+                );
+
                 _sessionManager.GetOrCreateSession(ChatId);
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex);
             }
+
             return true;
         }
 

@@ -8,11 +8,11 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
     internal class BeginQuizController : BaseController
     {
         private IQuizRepository _quizRepository;
-        private readonly DBRepository _repository;
+        private readonly QuestionsRepository _repository;
 
         public BeginQuizController(ITelegramBotClient bot, IMessageService messageService,
             ISessionManager sessionManager, IQuizRepository quizRepository,
-            IKeyboardBuilder keyboardBuilder, DBRepository repository) : base(bot, messageService, sessionManager, keyboardBuilder)
+            IKeyboardBuilder keyboardBuilder, QuestionsRepository repository) : base(bot, messageService, sessionManager, keyboardBuilder)
         {
             _quizRepository = quizRepository;
             _repository = repository;
@@ -20,27 +20,29 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
 
         public override async Task<bool> HandleAsync(CancellationToken ct)
         {
-            var canHandle = CanHandle();
-            if (!canHandle)
-                return false;
+            if (!CanHandle()) return false;
 
-            string lessonId = CurrentUpdate?.Message?.Text;
-            if (string.IsNullOrEmpty(lessonId))
-                return false;
+            var lessonId = CurrentUpdate.Message?.Text;
+            if (string.IsNullOrWhiteSpace(lessonId)) return false;
 
+            // получаем объекты
             var questions = _repository.GetQuestions(lessonId);
+            if (questions.Count == 0) return true;   // ничего нет — гасим апдейт
+
             var session = GetCurrentSessionById(ChatId);
+            session.QuestionsForQuiz = new List<QuestionDto>(questions);   // <‑‑ теперь DTO, а не строки
+            session.Mode = BotMode.PassQuiz;
 
-            session.QuestionsForQuiz = new List<string>(questions);
-
-            if (questions != null || questions.Count != 0)
-            {
-                session.Mode = BotMode.PassQuiz;
-                _messageService.SendTextAsync(ChatId, questions[0], _keyboardBuilder.BuildBackToMenu());
-            }
+            // показываем первый вопрос
+            await _messageService.SendTextAsync(
+                ChatId,
+                $"❓ Вопрос 1/{questions.Count}:\n{questions[0].Text}",
+                replyMarkup: _keyboardBuilder.BuildBackToMenu()
+            );
 
             return true;
         }
+
 
         public override bool CanHandle()
         {

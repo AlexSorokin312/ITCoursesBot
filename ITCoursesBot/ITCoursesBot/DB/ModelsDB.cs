@@ -60,15 +60,16 @@
     public class UserAnswer
     {
         public int Id { get; set; }
-        public long UserId { get; set; }
-        public User User { get; set; } = null!;
-
-        public int QuestionId { get; set; }
-        public Question Question { get; set; } = null!;
-
         public string AnswerText { get; set; } = "";
         public bool IsCorrect { get; set; }
         public DateTime AnsweredAt { get; set; }
+        public int QuestionId { get; set; }
+        public long UserId { get; set; }
+
+        public Question Question { get; set; } = null!;
+        public User User { get; set; } = null!;
+
+
     }
 
     /// <summary>

@@ -101,7 +101,7 @@ namespace ITCoursesBot.ITCoursesBot.Services.OpenAI
             using var form = new MultipartFormDataContent();
             audioStream.Position = 0;
             form.Add(new StreamContent(audioStream), "file", fileName);
-            form.Add(new StringContent("whisper-1"), "model");
+            form.Add(new StringContent("gpt-4o-transcribe"), "model");
 
             var resp = await _httpClient.PostAsync(
                 "https://api.openai.com/v1/audio/transcriptions",
