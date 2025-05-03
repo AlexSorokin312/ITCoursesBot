@@ -51,7 +51,6 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
                 return false;
 
             return true;
-
         }
     }
 }
