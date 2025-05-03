@@ -15,19 +15,27 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
         public DefaultController(ITelegramBotClient bot,
             IMessageService messageService,
             IKeyboardBuilder keyboardBuilder,
-            ISessionManager sessionManager) : base(bot, messageService, sessionManager)
+            ISessionManager sessionManager) : base(bot, messageService, sessionManager, keyboardBuilder)
         {
 
         }
 
         public override bool CanHandle()
         {
-            return false;
+            var session = GetCurrentSessionById(ChatId);
+            if (session == null)
+                return false;
+
+            if (session.Mode != BotMode.None)
+                return false;
+
+            return true;
         }
 
-        public override Task<bool> HandleAsync(CancellationToken ct)
+        public override async Task<bool> HandleAsync(CancellationToken ct)
         {
-            throw new NotImplementedException();
+            await _messageService.SendTextAsync(ChatId, "Выберите опцию работы с чатом:", _keyboardBuilder.Build());
+            return true;
         }
     }
 }

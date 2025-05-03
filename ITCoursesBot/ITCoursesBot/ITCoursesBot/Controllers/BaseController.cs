@@ -8,14 +8,16 @@ public abstract class BaseController
 
     protected IMessageService _messageService { get; private set; }
     protected ISessionManager _sessionManager { get; private set; }
+    protected IKeyboardBuilder _keyboardBuilder { get; private set; }
 
     protected Update CurrentUpdate { get; private set; } = null!;
 
-    public BaseController(ITelegramBotClient bot, IMessageService messageService, ISessionManager sessionManager)
+    public BaseController(ITelegramBotClient bot, IMessageService messageService, ISessionManager sessionManager, IKeyboardBuilder keyboardBuilder)
     {
         Bot = bot;
         _messageService = messageService;
         _sessionManager = sessionManager;
+        _keyboardBuilder = keyboardBuilder;
     }
 
     protected BaseController(ITelegramBotClient bot)

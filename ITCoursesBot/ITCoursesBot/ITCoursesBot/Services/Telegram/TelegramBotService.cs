@@ -1,5 +1,5 @@
-﻿using ITCoursesBot.Interfaces;
-using ITCoursesBot.ITCoursesBot.Configuration;
+﻿using ITCoursesBot.ITCoursesBot.Configuration;
+using ITCoursesBot.Interfaces;
 using System.Collections.Concurrent;
 using Telegram.Bot;
 using Telegram.Bot.Types;
@@ -221,7 +221,7 @@ public class TelegramBotService : ITelegramBotService
         // -------- режим “Code Explain” ---------------------------------------------------------
         if (s.Mode == BotMode.CodeExplain)
         {
-            string explanation = await _openAi.GetChatResponseAsync(systemInst, msg!.Text);
+            string explanation = await _openAi.GetChatResponseAsync(systemInst, msg.Text);
 
             await _messageService.SendTextAsync(
                 chatId,

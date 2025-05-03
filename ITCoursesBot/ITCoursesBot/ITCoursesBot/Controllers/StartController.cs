@@ -5,13 +5,13 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
 {
     internal class StartController : BaseController
     {
-        private IKeyboardBuilder _keyboardBuilder;
+
         public StartController(ITelegramBotClient bot,
             IMessageService messageService,
             IKeyboardBuilder keyboardBuilder,
-            ISessionManager sessionManager) : base(bot, messageService, sessionManager)
+            ISessionManager sessionManager) : base(bot, messageService, sessionManager, keyboardBuilder)
         {
-            _keyboardBuilder = keyboardBuilder;
+
         }
 
         public override async Task<bool> HandleAsync(CancellationToken ct)

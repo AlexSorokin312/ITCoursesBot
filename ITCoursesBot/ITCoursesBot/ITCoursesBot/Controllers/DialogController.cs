@@ -9,7 +9,7 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
         public DialogController(ITelegramBotClient bot,
             IMessageService messageService,
             IKeyboardBuilder keyboardBuilder,
-            ISessionManager sessionManager) : base(bot, messageService, sessionManager)
+            ISessionManager sessionManager) : base(bot, messageService, sessionManager, keyboardBuilder)
         {
         }
 

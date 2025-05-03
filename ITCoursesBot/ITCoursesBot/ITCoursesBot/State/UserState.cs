@@ -10,4 +10,7 @@ public class UserState
     public bool AwaitLessonNumber => Mode == BotMode.BeginQuiz && LessonId is null;
     public bool AwaitAnswer => (Mode == BotMode.BeginQuiz || Mode == BotMode.MockInterview)
                                 && LessonId is not null && Questions is not null;
+
+    public void SetDefaultMode() => Mode = BotMode.None;
+    
 }

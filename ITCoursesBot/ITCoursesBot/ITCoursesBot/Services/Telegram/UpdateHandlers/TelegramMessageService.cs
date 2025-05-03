@@ -1,5 +1,4 @@
-﻿using System.Text;
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -12,27 +11,6 @@ using Telegram.Bot.Types.ReplyMarkups;
 public class TelegramMessageService : IMessageService
 {
     private readonly ITelegramBotClient _bot;
-
-    // 1) Шаблон для code-блоков (```…```)
-    private static readonly Regex CodeBlockRegex =
-        new(@"(```[\s\S]*?```)", RegexOptions.Compiled);
-
-    // 2) Спецсимволы MarkdownV2 (без *)
-    private static readonly Regex EscapeRegex =
-        new(@"([_\[\]\(\)~`>#+\-=|{}\.\!])", RegexOptions.Compiled);
-
-    public TelegramMessageService(ITelegramBotClient bot) => _bot = bot;
-
-    public static string EscapeMarkdownV2(string text)
-    {
-        var parts = CodeBlockRegex.Split(text);
-        for (int i = 0; i < parts.Length; i++)
-        {
-            if (!parts[i].StartsWith("```"))
-                parts[i] = EscapeRegex.Replace(parts[i], "\\$1");
-        }
-        return string.Concat(parts);
-    }
 
     public async Task SendTextAsync(
         long chatId,
@@ -60,10 +38,33 @@ public class TelegramMessageService : IMessageService
         string fileName,
         CancellationToken cancellationToken = default)
     {
+
+
         await _bot.SendVoice(
             chatId: chatId,
             voice: InputFile.FromStream(voiceStream, fileName),
             cancellationToken: cancellationToken
         );
+    }
+
+    // 1) Шаблон для code-блоков (```…```)
+    private static readonly Regex CodeBlockRegex =
+        new(@"(```[\s\S]*?```)", RegexOptions.Compiled);
+
+    // 2) Спецсимволы MarkdownV2 (без *)
+    private static readonly Regex EscapeRegex =
+        new(@"([_\[\]\(\)~`>#+\-=|{}\.\!])", RegexOptions.Compiled);
+
+    public TelegramMessageService(ITelegramBotClient bot) => _bot = bot;
+
+    public static string EscapeMarkdownV2(string text)
+    {
+        var parts = CodeBlockRegex.Split(text);
+        for (int i = 0; i < parts.Length; i++)
+        {
+            if (!parts[i].StartsWith("```"))
+                parts[i] = EscapeRegex.Replace(parts[i], "\\$1");
+        }
+        return string.Concat(parts);
     }
 }

@@ -4,18 +4,21 @@ using Telegram.Bot.Types.ReplyMarkups;
 public class KeyboardBuilder : IKeyboardBuilder
 {
     public const string BEGIN_QUIZ_BUTTON_NAME = "begin_quiz";
+    public const string BACK_TO_MENU_BUTTON_NAME = "back_to_menu";
+
+    public const string CODE_EXPLANATION_BUTTON_NAME = "code_explanations";
     public InlineKeyboardMarkup Build() =>
         new InlineKeyboardMarkup(new[]
         {
             new[]
             {
-                InlineKeyboardButton.WithCallbackData("📝 Вопросы по урокам",      "begin_quiz"),
+                InlineKeyboardButton.WithCallbackData("📝 Вопросы по урокам",      BEGIN_QUIZ_BUTTON_NAME),
                 InlineKeyboardButton.WithCallbackData("🎯 Тренажёр собеседований","mock_interview")
             },
             new[]
             {
                 InlineKeyboardButton.WithCallbackData("📊 Прогресс",            "progress"),
-                InlineKeyboardButton.WithCallbackData("💡 Объяснения кода",      "code_explanations")
+                InlineKeyboardButton.WithCallbackData("💡 Объяснения кода",      CODE_EXPLANATION_BUTTON_NAME)
             },
             new[]
             {
@@ -45,7 +48,7 @@ public class KeyboardBuilder : IKeyboardBuilder
         {
             new[]
             {
-                InlineKeyboardButton.WithCallbackData("🏠 В главное меню", "start_over")
+                InlineKeyboardButton.WithCallbackData("🏠 В главное меню", BACK_TO_MENU_BUTTON_NAME)
             }
         });
     }

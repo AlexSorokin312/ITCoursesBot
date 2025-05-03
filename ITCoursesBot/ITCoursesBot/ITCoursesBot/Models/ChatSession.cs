@@ -18,5 +18,7 @@
                                                  && LessonIdentifier is not null
                                                  && QuestionPool is not null;
 
+    public void SetDefaultState()=> Mode = BotMode.None;
+
 
 }

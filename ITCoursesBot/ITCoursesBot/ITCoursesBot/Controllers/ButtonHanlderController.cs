@@ -12,7 +12,8 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
 
         public ButtonHanlderController(ITelegramBotClient bot,
             IMessageService messageService,
-            ISessionManager sessionManager) : base(bot, messageService, sessionManager)
+            ISessionManager sessionManager,
+            IKeyboardBuilder keyboardBuilder) : base(bot, messageService, sessionManager, keyboardBuilder)
         {
 
         }
@@ -21,9 +22,6 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
         {
             var session = GetCurrentSessionById(ChatId);
             if (session == null)
-                return false;
-
-            if (session.Mode != BotMode.None)
                 return false;
 
             if (CurrentUpdate == null)
@@ -44,17 +42,29 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
 
             if (butttonName == KeyboardBuilder.BEGIN_QUIZ_BUTTON_NAME)
             {
-                await _messageService.SendTextAsync(ChatId, "Введите номер урока:", cancellationToken: ct);
+                await _messageService.SendTextAsync(ChatId, "Введите номер урока:", _keyboardBuilder.BuildBackToMenu(), cancellationToken: ct);
                 session.Mode = BotMode.BeginQuiz;
                 return true;
 
             }
-            if (butttonName == "progress")
+
+            if (butttonName == KeyboardBuilder.CODE_EXPLANATION_BUTTON_NAME)
             {
-                await _messageService.SendTextAsync(ChatId, "Введите номер урока:", cancellationToken: ct);
+                await _messageService.SendTextAsync(ChatId, "Включен режим «Объяснение кода», пришлите фрагмент — я объясню.", cancellationToken: ct);
+                session.Mode = BotMode.CodeExplain;
+                return true;
+
+            }
+
+            if (butttonName == KeyboardBuilder.BACK_TO_MENU_BUTTON_NAME)
+            {
+                await _messageService.SendTextAsync(ChatId, "Выберите режим работы с чатом:", _keyboardBuilder.Build(), cancellationToken: ct);
                 session.Mode = BotMode.None;
                 return true;
+
             }
+
+
             return false;
 
 

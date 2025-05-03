@@ -7,10 +7,9 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
     internal class BeginQuizController : BaseController
     {
         private IQuizRepository _quizRepository;
-        public BeginQuizController(ITelegramBotClient bot,
-            IMessageService messageService,
-            ISessionManager sessionManager,
-            IQuizRepository quizRepository) : base(bot, messageService, sessionManager)
+        public BeginQuizController(ITelegramBotClient bot, IMessageService messageService,
+            ISessionManager sessionManager, IQuizRepository quizRepository,
+            IKeyboardBuilder keyboardBuilder) : base(bot, messageService, sessionManager, keyboardBuilder)
         {
             _quizRepository = quizRepository;
         }
@@ -27,14 +26,13 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
             var questions = _quizRepository.GetQuestionsByLessonAsync(lessonId);
             var session = GetCurrentSessionById(ChatId);
 
-            session.QuestionsForQuiz = questions;
+            session.QuestionsForQuiz = new List<string>(questions);
 
-            if (questions != null)
+            if (questions != null || questions.Count != 0)
             {
                 session.Mode = BotMode.PassQuiz;
-                _messageService.SendTextAsync(ChatId, questions[0]);
+                _messageService.SendTextAsync(ChatId, questions[0], _keyboardBuilder.BuildBackToMenu());
             }
-
 
             return true;
         }
