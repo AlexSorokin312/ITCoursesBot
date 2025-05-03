@@ -29,7 +29,5 @@ public class QuizRepository : IQuizRepository
     public List<string> GetQuestionsForInterviewBlockAsync(string block, CancellationToken ct = default)
     {
         throw new NotFiniteNumberException();
-
-        throw new NotImplementedException();
     }
 }

@@ -1,5 +1,6 @@
 ﻿
 using ITCoursesBot.Interfaces;
+using ITCoursesBot.ITCoursesBot.Services;
 using Telegram.Bot;
 
 namespace ITCoursesBot.ITCoursesBot.Controllers
@@ -7,11 +8,14 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
     internal class BeginQuizController : BaseController
     {
         private IQuizRepository _quizRepository;
+        private readonly DBRepository _repository;
+
         public BeginQuizController(ITelegramBotClient bot, IMessageService messageService,
             ISessionManager sessionManager, IQuizRepository quizRepository,
-            IKeyboardBuilder keyboardBuilder) : base(bot, messageService, sessionManager, keyboardBuilder)
+            IKeyboardBuilder keyboardBuilder, DBRepository repository) : base(bot, messageService, sessionManager, keyboardBuilder)
         {
             _quizRepository = quizRepository;
+            _repository = repository;
         }
 
         public override async Task<bool> HandleAsync(CancellationToken ct)
@@ -23,7 +27,8 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
             string lessonId = CurrentUpdate?.Message?.Text;
             if (string.IsNullOrEmpty(lessonId))
                 return false;
-            var questions = _quizRepository.GetQuestionsByLessonAsync(lessonId);
+
+            var questions = _repository.GetQuestions(lessonId);
             var session = GetCurrentSessionById(ChatId);
 
             session.QuestionsForQuiz = new List<string>(questions);

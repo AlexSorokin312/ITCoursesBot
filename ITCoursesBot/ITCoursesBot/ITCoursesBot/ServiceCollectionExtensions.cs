@@ -1,14 +1,12 @@
-﻿using System;
+﻿using ITCoursesBot.Interfaces;
+using ITCoursesBot.ITCoursesBot.Configuration;
+using ITCoursesBot.ITCoursesBot.Controllers;
+using ITCoursesBot.ITCoursesBot.Models;
+using ITCoursesBot.ITCoursesBot.Services;
+using ITCoursesBot.ITCoursesBot.Services.OpenAI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Telegram.Bot;
-using ITCoursesBot.ITCoursesBot.Configuration;
-using ITCoursesBot.ITCoursesBot.Controllers;
-using ITCoursesBot.ITCoursesBot.Services;
-using ITCoursesBot.Interfaces;
-using Scrutor;
-using ITCoursesBot.ITCoursesBot.Models;
-using ITCoursesBot.ITCoursesBot.Services.OpenAI;
 
 namespace ITCoursesBot.ITCoursesBot
 {
@@ -42,6 +40,9 @@ namespace ITCoursesBot.ITCoursesBot
             services.AddScoped<IOpenAIClient, OpenAIClient>();
             services.AddScoped<IQuizRepository, QuizRepository>();
             services.AddScoped<IKeyboardBuilder, KeyboardBuilder>();
+
+            services.AddSingleton<DBRepository>();
+
             return services;
         }
 

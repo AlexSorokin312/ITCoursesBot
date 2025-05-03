@@ -1,5 +1,6 @@
 ﻿using ITCoursesBot.Interfaces;
 using ITCoursesBot.ITCoursesBot.Configuration;
+using ITCoursesBot.ITCoursesBot.Services;
 using Telegram.Bot;
 
 namespace ITCoursesBot.ITCoursesBot.Controllers
@@ -9,6 +10,7 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
         private readonly IOpenAIClient _openAi;
         private readonly OpenAISettings _openAISettings;
         private readonly IQuizRepository _quizRepository;
+        private readonly DBRepository _repository;
 
         public PassQuizController(
             ITelegramBotClient bot,
@@ -17,12 +19,13 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
             IKeyboardBuilder keyboardBuilder,
             IOpenAIClient openAi,
             OpenAISettings openAISettings,
-            IQuizRepository quizRepository
-        ) : base(bot, messageService, sessionManager, keyboardBuilder)
+            IQuizRepository quizRepository,
+            DBRepository repository) : base(bot, messageService, sessionManager, keyboardBuilder)
         {
             _openAi = openAi;
             _openAISettings = openAISettings;
             _quizRepository = quizRepository;
+            _repository = repository;
         }
 
         public override async Task<bool> HandleAsync(CancellationToken ct)
@@ -220,7 +223,7 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
                 string next = session.QuestionsForQuiz[session.QuestionIndex];
                 await _messageService.SendTextAsync(
                     ChatId,
-                    $"❓ Вопрос {session.QuestionIndex + 1}/{session.QuestionsForQuiz.Count}:\n{next}"
+                    next
                 );
             }
         }
