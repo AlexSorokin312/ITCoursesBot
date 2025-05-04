@@ -28,130 +28,97 @@ public sealed record LessonCoveredDto(
     int TotalQuestions);
 
 
+    /// <summary>Общая статистика по прохождению.</summary>
+    public sealed record ProgressSummaryDto(
+        int TotalQuestions,
+        int AnsweredQuestions,
+        int CorrectFirstAttempt,
+        int WithErrors);
+
+    /// <summary>Число ошибок по одному уроку.</summary>
+    public sealed record ErrorByLessonDto(
+        string LessonTitle,
+        int WrongCount);
+
+
 public sealed class UserProgressRepository
 {
     private readonly BotDbContext _db;
     public UserProgressRepository(BotDbContext db) => _db = db;
 
-    /// 1. Вопросы, на которые ни разу не ответили правильно
-    public async Task<List<QuestionProgressDto>> GetNeverAnsweredCorrectlyAsync(long userId)
+    /// <summary>
+    /// Общая сводка:
+    /// - всего вопросов в базе;
+    /// - сколько вопросов пользователь трогал;
+    /// - сколько сразу решил верно;
+    /// - сколько с ошибками.
+    /// </summary>
+    public async Task<ProgressSummaryDto> GetProgressSummaryAsync(long userId)
     {
-        var questions = await _db.Questions.AsNoTracking().ToListAsync();
+        // всего вопросов в курсе
+        int totalQuestions = await _db.Questions.CountAsync();
+
+        // все ответы пользователя, упорядоченные по времени
         var allAnswers = await _db.UserAnswers
-                                  .Where(a => a.UserId == userId)
-                                  .AsNoTracking()
-                                  .ToListAsync();
-
-        var result = new List<QuestionProgressDto>();
-
-        foreach (var q in questions)
-        {
-            var answers = allAnswers.Where(a => a.QuestionId == q.Id).ToList();
-            int correct = answers.Count(a => a.IsCorrect);
-            int wrong = answers.Count - correct;
-
-            if (correct == 0)
-                result.Add(new QuestionProgressDto(q.Id, q.Text, correct, wrong));
-        }
-
-        return result;
-    }
-
-    /// 2. Вопросы, где неверных ответов больше, чем верных
-    public async Task<List<QuestionProgressDto>> GetMoreWrongThanRightAsync(long userId)
-    {
-        var questions = await _db.Questions.AsNoTracking().ToListAsync();
-        var allAnswers = await _db.UserAnswers
-                                  .Where(a => a.UserId == userId)
-                                  .AsNoTracking()
-                                  .ToListAsync();
-
-        var result = new List<QuestionProgressDto>();
-
-        foreach (var q in questions)
-        {
-            var answers = allAnswers.Where(a => a.QuestionId == q.Id).ToList();
-            int correct = answers.Count(a => a.IsCorrect);
-            int wrong = answers.Count - correct;
-
-            if (wrong > correct)
-                result.Add(new QuestionProgressDto(q.Id, q.Text, correct, wrong));
-        }
-
-        return result;
-    }
-
-    /// 3. Топ‑N уроков с наибольшим числом ошибок
-    public async Task<List<LessonErrorDto>> GetLessonsWithMostErrorsAsync(long userId, int top = 5)
-    {
-        var userAnswers = await _db.UserAnswers
             .Where(a => a.UserId == userId)
-            .Include(a => a.Question)
-                .ThenInclude(q => q.Lesson)
-                    .ThenInclude(l => l.Course)
+            .OrderBy(a => a.AnsweredAt)
             .AsNoTracking()
             .ToListAsync();
 
-        return userAnswers
-            .GroupBy(a => a.Question.LessonId)
-            .Select(g =>
-            {
-                var lesson = g.First().Question.Lesson;
-                int wrong = g.Count(a => !a.IsCorrect);
-                int correct = g.Count(a => a.IsCorrect);
-
-                // теперь каждая ошибка считается за 2 балла
-                int netErr = wrong * 2 - correct;
-
-                return new LessonErrorDto(
-                    lesson.Id,
-                    lesson.Title,
-                    lesson.Course.Name,
-                    lesson.Major,
-                    lesson.Minor,
-                    netErr
-                );
-            })
-            .OrderByDescending(dto => dto.WrongAnswers)
-            .Take(top)
+        // distinct вопросов, которые пользователь трогал
+        var distinctByQuestion = allAnswers
+            .GroupBy(a => a.QuestionId)
+            .Select(g => g.ToList())
             .ToList();
+
+        int answeredQuestions = distinctByQuestion.Count;
+
+        // первых попыток по каждому вопросу
+        int correctFirst = distinctByQuestion.Count(g => g.First().IsCorrect);
+
+        // отвеченных с ошибками (есть хотя бы одна первая попытка неверная)
+        int withErrors = answeredQuestions - correctFirst;
+
+        return new ProgressSummaryDto(
+            totalQuestions,
+            answeredQuestions,
+            correctFirst,
+            withErrors);
     }
 
-    /// 4. Уроки, где студент ответил хотя бы раз на каждый вопрос
-    public async Task<List<LessonCoveredDto>> GetFullyCoveredLessonsAsync(long userId)
+    /// <summary>
+    /// Распределение ошибок по урокам:
+    /// подсчитываем только отрицательные попытки (IsCorrect==false).
+    /// </summary>
+    public async Task<List<ErrorByLessonDto>> GetErrorDistributionByLessonAsync(long userId)
     {
-        var lessons = await _db.Lessons
-                                 .Include(l => l.Course)
-                                 .Include(l => l.Questions)
-                                 .AsNoTracking()
-                                 .ToListAsync();
+        // 1) Получаем все неверные ответы пользователя вместе с уроками
+        var wrongAnswers = await _db.UserAnswers
+            .Where(a => a.UserId == userId && !a.IsCorrect)
+            .Include(a => a.Question)
+                .ThenInclude(q => q.Lesson)
+            .AsNoTracking()
+            .ToListAsync();
 
-        var answersByQuestion = await _db.UserAnswers
-                                         .Where(a => a.UserId == userId)
-                                         .Select(a => a.QuestionId)
-                                         .Distinct()
-                                         .ToListAsync();
-        var answeredSet = new HashSet<int>(answersByQuestion);
-
-        var result = new List<LessonCoveredDto>();
-
-        foreach (var l in lessons)
-        {
-            int totalQ = l.Questions.Count;
-            int covered = l.Questions.Count(q => answeredSet.Contains(q.Id));
-
-            if (totalQ > 0 && covered == totalQ)
+        // 2) Берём уникальные пары (LessonTitle, QuestionId)
+        var distinctQuestions = wrongAnswers
+            .Select(a => new
             {
-                result.Add(new LessonCoveredDto(
-                    l.Id,
-                    l.Title,
-                    l.Course.ShortName,
-                    l.Major,
-                    l.Minor,
-                    totalQ));
-            }
-        }
+                LessonTitle = a.Question.Lesson.Title,
+                QuestionId = a.QuestionId
+            })
+            .Distinct();
 
-        return result;
+        // 3) Группируем по названию урока и считаем уникальные вопросы
+        var distribution = distinctQuestions
+            .GroupBy(x => x.LessonTitle)
+            .Select(g => new ErrorByLessonDto(
+                LessonTitle: g.Key,
+                WrongCount: g.Count()  // число уникальных вопросов с ошибками
+            ))
+            .OrderByDescending(dto => dto.WrongCount)
+            .ToList();
+
+        return distribution;
     }
 }

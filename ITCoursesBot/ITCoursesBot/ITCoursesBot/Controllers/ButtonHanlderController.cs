@@ -41,9 +41,9 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
         public override async Task<bool> HandleAsync(CancellationToken ct)
         {
             var session = GetCurrentSessionById(ChatId);
-            var butttonName = CurrentUpdate?.CallbackQuery?.Data;
+            var buttonName = CurrentUpdate?.CallbackQuery?.Data;
 
-            if (butttonName == KeyboardBuilder.BEGIN_QUIZ_BUTTON_NAME)
+            if (buttonName == KeyboardBuilder.BEGIN_QUIZ_BUTTON_NAME)
             {
                 await _messageService.SendTextAsync(ChatId, "Введите номер урока:", _keyboardBuilder.BuildBackToMenu());
                 session.Mode = BotMode.BeginQuiz;
@@ -51,7 +51,7 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
 
             }
 
-            if (butttonName == KeyboardBuilder.CODE_EXPLANATION_BUTTON_NAME)
+            if (buttonName == KeyboardBuilder.CODE_EXPLANATION_BUTTON_NAME)
             {
                 await _messageService.SendTextAsync(ChatId, "Включен режим «Объяснение кода», пришлите фрагмент — я объясню.");
                 session.Mode = BotMode.CodeExplain;
@@ -59,7 +59,7 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
 
             }
 
-            if (butttonName == KeyboardBuilder.BACK_TO_MENU_BUTTON_NAME)
+            if (buttonName == KeyboardBuilder.BACK_TO_MENU_BUTTON_NAME)
             {
                 await _messageService.SendTextAsync(ChatId, "Выберите режим работы с чатом:", _keyboardBuilder.Build());
                 session.Mode = BotMode.None;
@@ -67,42 +67,47 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
 
             }
 
-            if (butttonName == KeyboardBuilder.USER_PROGRESS_BUTTON_NAME)
+            if (buttonName == KeyboardBuilder.USER_PROGRESS_BUTTON_NAME)
             {
-                if (!CanHandle())
-                    return false;
+                // 1) Получаем всю статистику
+                var summary = await _progressRepo.GetProgressSummaryAsync(ChatId);
+                var distribution = await _progressRepo.GetErrorDistributionByLessonAsync(ChatId);
 
-                long userId = ChatId;
+                // 2) Формируем сообщение
+                var sb = new StringBuilder()
+                    .AppendLine("🏅 Пройдено " +
+                                $"{summary.AnsweredQuestions}/{summary.TotalQuestions} вопросов")
+                    .AppendLine($"Из {summary.AnsweredQuestions} вопросов:")
+                    .AppendLine($"• {summary.CorrectFirstAttempt} — решены верно с первой попытки")
+                    .AppendLine($"• {summary.WithErrors} — решены с ошибками")
+                    .AppendLine()
+                    .AppendLine("🏆 Распределение ошибок по урокам:");
 
-                var never = await _progressRepo.GetNeverAnsweredCorrectlyAsync(userId);
-                var tricky = await _progressRepo.GetMoreWrongThanRightAsync(userId);
-                var worst = await _progressRepo.GetLessonsWithMostErrorsAsync(userId, 3);
-                var covered = await _progressRepo.GetFullyCoveredLessonsAsync(userId);
-
-                var sb = new StringBuilder("📊 *Ваш прогресс*\n\n")
-                    .AppendLine($"❌ Вопросов без правильного ответа: *{never.Count}*")
-                    .AppendLine($"⚖️  Вопросов, где ошибок больше, чем удачных ответов: *{tricky.Count}*")
-                    .AppendLine("\n🏆 Топ уроков по количеству ошибок:");
-
-                foreach (var l in worst)
-                    sb.AppendLine($"• {l.LessonTitle} — {l.WrongAnswers} (ошибки − правильные)");
-
-                sb.AppendLine("\n✅ Уроки, где вы ответили хотя бы раз на все вопросы:");
-                if (covered.Any())
+                if (distribution.Count == 0)
                 {
-                    foreach (var l in covered)
-                        sb.AppendLine($"• {l.LessonTitle} ({l.TotalQuestions} вопросов)");
+                    sb.AppendLine("— пока нет ошибок —");
                 }
                 else
                 {
-                    sb.AppendLine("— пока нет —");
+                    foreach (var e in distribution)
+                    {
+                        // склонение слова «ошибка»
+                        var suffix = e.WrongCount % 10 == 1 && e.WrongCount % 100 != 11
+                                     ? "ка"
+                                     : "ок";
+                        sb.AppendLine($"• {e.LessonTitle} — {e.WrongCount} ошиб{suffix}");
+                    }
                 }
 
-                // Отправляем пользователю и возвращаем true
-                await _messageService.SendTextAsync(ChatId, sb.ToString());
+                // 3) Отправляем и завершаем
+                await _messageService.SendTextAsync(
+                    ChatId,
+                    sb.ToString()
+                );
                 return true;
             }
-            return true;
+
+            return false;
         }
     }
 }
