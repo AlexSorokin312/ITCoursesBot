@@ -8,6 +8,7 @@ public class KeyboardBuilder : IKeyboardBuilder
 
     public const string CODE_EXPLANATION_BUTTON_NAME = "code_explanations";
     public const string USER_PROGRESS_BUTTON_NAME = "progress";
+    public const string REWORK_BUTTON_NAME = "rework";
     public InlineKeyboardMarkup Build() =>
         new InlineKeyboardMarkup(new[]
         {
@@ -24,7 +25,7 @@ public class KeyboardBuilder : IKeyboardBuilder
             new[]
             {
                 InlineKeyboardButton.WithCallbackData("💬 Диалог",              "dialog"),
-                InlineKeyboardButton.WithCallbackData("⚙️ Мои настройки",       "settings")
+                InlineKeyboardButton.WithCallbackData("📝 Работа над ошибками",       "rework")
             }
         });
 

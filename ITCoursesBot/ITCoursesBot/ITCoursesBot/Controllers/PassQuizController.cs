@@ -77,11 +77,11 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
         private async Task<Stream> DownloadVoiceStreamAsync(string fileId, CancellationToken ct)
         {
             // 1) метаданные
-            var file = await Bot.GetFile(fileId, cancellationToken: ct);
+            var file = await _bot.GetFile(fileId, cancellationToken: ct);
 
             // 2) скачиваем в память
             var ms = new MemoryStream();
-            await Bot.DownloadFile(
+            await _bot.DownloadFile(
                 filePath: file.FilePath!,
                 destination: ms,
                 cancellationToken: ct

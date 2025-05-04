@@ -4,8 +4,9 @@ using Telegram.Bot.Types;
 
 public abstract class BaseController
 {
-    protected ITelegramBotClient Bot { get; private set; } = null!;
+    private ITelegramBotClient bot;
 
+    protected ITelegramBotClient _bot { get; private set; } = null!;
     protected IMessageService _messageService { get; private set; }
     protected ISessionManager _sessionManager { get; private set; }
     protected IKeyboardBuilder _keyboardBuilder { get; private set; }
@@ -14,15 +15,10 @@ public abstract class BaseController
 
     public BaseController(ITelegramBotClient bot, IMessageService messageService, ISessionManager sessionManager, IKeyboardBuilder keyboardBuilder)
     {
-        Bot = bot;
+        _bot = bot;
         _messageService = messageService;
         _sessionManager = sessionManager;
         _keyboardBuilder = keyboardBuilder;
-    }
-
-    protected BaseController(ITelegramBotClient bot)
-    {
-        Bot = bot;
     }
 
     public abstract bool CanHandle();

@@ -1,16 +1,16 @@
-﻿    using ITCoursesBot.Interfaces;
-    using ITCoursesBot.ITCoursesBot.Configuration;
-    using ITCoursesBot.ITCoursesBot.Controllers;
-    using ITCoursesBot.ITCoursesBot.Models;
-    using ITCoursesBot.ITCoursesBot.Services;
-    using ITCoursesBot.ITCoursesBot.Services.OpenAI;
-    using Microsoft.Extensions.Configuration;
-    using Microsoft.Extensions.DependencyInjection;
-    using Telegram.Bot;
+﻿using ITCoursesBot.Interfaces;
+using ITCoursesBot.ITCoursesBot.Configuration;
+using ITCoursesBot.ITCoursesBot.Controllers;
+using ITCoursesBot.ITCoursesBot.Models;
+using ITCoursesBot.ITCoursesBot.Services;
+using ITCoursesBot.ITCoursesBot.Services.OpenAI;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Telegram.Bot;
 
-    namespace ITCoursesBot.ITCoursesBot
-    {
-        public static class ServiceCollectionExtensions
+namespace ITCoursesBot.ITCoursesBot
+{
+    public static class ServiceCollectionExtensions
         {
             public static IServiceCollection AddBotConfiguration(this IServiceCollection services, IConfiguration config)
             {
@@ -53,7 +53,7 @@
                 services.AddScoped<StartController>();
                 services.AddScoped<BeginQuizController>();
                 services.AddScoped<PassQuizController>();
-                services.AddScoped<ButtonHanlderController>();
+                services.AddScoped<ButtonHandlerController>();
                 services.AddScoped<CodeExplainController>();
                 services.AddScoped<MockInterviewController>();
                 services.AddScoped<DialogController>();
@@ -66,7 +66,7 @@
                         sp.GetRequiredService<StartController>(),
                         sp.GetRequiredService<BeginQuizController>(),
                         sp.GetRequiredService<PassQuizController>(),
-                        sp.GetRequiredService<ButtonHanlderController>(),
+                        sp.GetRequiredService<ButtonHandlerController>(),
                         sp.GetRequiredService<CodeExplainController>(),
                         sp.GetRequiredService<MockInterviewController>(),
                         sp.GetRequiredService<DialogController>(),
@@ -76,6 +76,7 @@
                 });
                 return services;
             }
+
             public static IServiceCollection AddBotWorker(this IServiceCollection services)
             {
                 services.AddHostedService<BotWorker>();

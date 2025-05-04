@@ -1,15 +1,12 @@
 ﻿    namespace ITCoursesBot.DB
     {
-        /// <summary>
-        /// Пользователь бота
-        /// </summary>
         public class User
         {
-            public long Id { get; set; }  // Telegram UserId
+            public long Id { get; set; } 
             public string Username { get; set; } = "";
-            public DateTime FirstLaunch { get; set; }  // когда впервые запустил бота
-            public DateTime LastUse { get; set; }  // когда последний раз использовал
-            public int UsageCount { get; set; }  // сколько раз запускал за всё время
+            public DateTime FirstLaunch { get; set; } 
+            public DateTime LastUse { get; set; } 
+            public int UsageCount { get; set; }
 
             public ICollection<UserAnswer> Answers { get; set; } = new List<UserAnswer>();
             public ICollection<AIUserRequests> AIRequests { get; set; } = new List<AIUserRequests>();
@@ -65,7 +62,6 @@
             public DateTime AnsweredAt { get; set; }
             public int QuestionId { get; set; }
             public long UserId { get; set; }
-
             public Question Question { get; set; } = null!;
             public User User { get; set; } = null!;
 
@@ -80,8 +76,7 @@
             public int Id { get; set; }
             public long UserId { get; set; }
             public User User { get; set; } = null!;
-
-            public DateTime Date { get; set; }  // дата (с точностью до дня)
-            public int Count { get; set; }  // сколько запросов сделал в этот день
+            public DateTime Date { get; set; } 
+            public int Count { get; set; }  
         }
     }

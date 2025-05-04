@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+
 namespace ITCoursesBot
 {
     internal class Program
@@ -30,8 +31,8 @@ namespace ITCoursesBot
             using (var scope = host.Services.CreateScope())
             {
                 var db = scope.ServiceProvider.GetRequiredService<BotDbContext>();
-                //db.Database.Migrate();
-                //DataSeeder.Seed(db);
+                db.Database.Migrate();
+                DataSeeder.Seed(db);
             }
 
             await host.RunAsync();

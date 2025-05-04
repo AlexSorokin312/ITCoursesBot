@@ -1,26 +1,15 @@
-﻿using System.Collections.Generic;
-using System.Linq;
+﻿using ITCoursesBot.DB;
 using Microsoft.EntityFrameworkCore;
-using ITCoursesBot.DB;
 
 namespace ITCoursesBot.ITCoursesBot.Services
 {
     public sealed record QuestionDto(int Id, string Text);
 
-    /// <summary>
-    /// Репозиторий, который загружает из БД все уроки и их вопросы
-    /// и хранит их в памяти в виде словаря:
-    /// ключ = Course.ShortName + Major + Minor,
-    /// значение = список чистых текстов вопросов.
-    /// </summary>
+
     public class QuestionsRepository
     {
         private readonly BotDbContext _db;
 
-        /// <summary>
-        /// Ключ: $"{ShortName}{Major}{Minor}", например "База21"
-        /// Значение: список **сырого** текста вопросов.
-        /// </summary>
         private IReadOnlyDictionary<string, List<QuestionDto>> QuestionsMap { get; }
 
         public QuestionsRepository(BotDbContext db)
@@ -29,9 +18,6 @@ namespace ITCoursesBot.ITCoursesBot.Services
             QuestionsMap = LoadQuestions();
         }
 
-        /// <summary>
-        /// Загружает из БД все уроки и сохраняет чистые тексты вопросов.
-        /// </summary>
         private Dictionary<string, List<QuestionDto>> LoadQuestions()
         {
             var lessons = _db.Lessons
@@ -53,10 +39,6 @@ namespace ITCoursesBot.ITCoursesBot.Services
 
             return dict;
         }
-
-        /// <summary>
-        /// Возвращает список DTO‑вопросов для нужного ключа; если ключа нет — пустой список.
-        /// </summary>
         public List<QuestionDto> GetQuestions(string combinedKey) =>
             QuestionsMap.TryGetValue(combinedKey, out var list) ? list : new();
     }

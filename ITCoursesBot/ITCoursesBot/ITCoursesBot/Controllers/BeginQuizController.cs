@@ -1,5 +1,4 @@
-﻿
-using ITCoursesBot.Interfaces;
+﻿using ITCoursesBot.Interfaces;
 using ITCoursesBot.ITCoursesBot.Services;
 using Telegram.Bot;
 
@@ -42,7 +41,6 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
 
             return true;
         }
-
 
         public override bool CanHandle()
         {
