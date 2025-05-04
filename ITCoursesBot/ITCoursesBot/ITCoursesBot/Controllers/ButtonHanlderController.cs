@@ -1,4 +1,5 @@
 ﻿using ITCoursesBot.Interfaces;
+using ITCoursesBot.ITCoursesBot.Configuration;
 using System.Text;
 using Telegram.Bot;
 using Telegram.Bot.Types;
@@ -8,17 +9,23 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
     public class ButtonHanlderController : BaseController
     {
         private readonly IUserStateStore _store;
-        private readonly IOpenAIClient _ai;
+        private readonly IOpenAIClient _openAi;
+        private readonly OpenAISettings _aiSetting;
+
         private readonly UserProgressRepository _progressRepo;
         private readonly IQuizRepository _repo;
 
         public ButtonHanlderController(ITelegramBotClient bot,
             IMessageService messageService,
             ISessionManager sessionManager,
+            OpenAISettings openAISettings,
             IKeyboardBuilder keyboardBuilder,
-            UserProgressRepository progressRepo) : base(bot, messageService, sessionManager, keyboardBuilder)
+            UserProgressRepository progressRepo,
+            IOpenAIClient openAi) : base(bot, messageService, sessionManager, keyboardBuilder)
         {
             _progressRepo = progressRepo;
+            _openAi = openAi;
+            _aiSetting = openAISettings;
         }
 
         public override bool CanHandle()
@@ -67,8 +74,9 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
 
             }
 
-            if (buttonName == KeyboardBuilder.USER_PROGRESS_BUTTON_NAME)
+           if (buttonName == KeyboardBuilder.USER_PROGRESS_BUTTON_NAME)
             {
+
                 // 1) Получаем всю статистику
                 var summary = await _progressRepo.GetProgressSummaryAsync(ChatId);
                 var distribution = await _progressRepo.GetErrorDistributionByLessonAsync(ChatId);
@@ -104,10 +112,35 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
                     ChatId,
                     sb.ToString()
                 );
+
+                // 1) Получаем списки вопросов
+                var okQs = await _progressRepo.GetQuestionsAnsweredWithoutErrorsAsync(ChatId);
+                var badQs = await _progressRepo.GetQuestionsWithErrorsAsync(ChatId);
+
+                // 2) Собираем prompt для OpenAI
+                var sbPrompt = new StringBuilder()
+                    .AppendLine("Пользователь на текущий момент ответил без ошибок на такие вопросы:")
+                    .AppendLine(string.Join("\n", okQs.Select((t, i) => $"{i + 1}. {t}")))
+                    .AppendLine()
+                    .AppendLine("В этих вопросах совершил ошибки:")
+                    .AppendLine(string.Join("\n", badQs.Select((t, i) => $"{i + 1}. {t}")));
+
+                string userMessage = sbPrompt.ToString();
+
+                // 3) Зовём OpenAI с системной инструкцией из appsettings.json
+                string aiReply = await _openAi.GetChatResponseAsync(
+                    _aiSetting.InstructionsProgressSummary,
+                    userMessage
+                );
+
+                // 4) Отправляем результат отдельно
+                await _messageService.SendTextAsync(
+                    ChatId,
+                    aiReply
+                );
                 return true;
             }
-
-            return false;
+            return true;
         }
     }
 }

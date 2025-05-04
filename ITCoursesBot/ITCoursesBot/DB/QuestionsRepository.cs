@@ -5,8 +5,6 @@ using ITCoursesBot.DB;
 
 namespace ITCoursesBot.ITCoursesBot.Services
 {
-
-    /// <summary>Мини‑объект, который содержит Id вопроса и его чистый текст.</summary>
     public sealed record QuestionDto(int Id, string Text);
 
     /// <summary>

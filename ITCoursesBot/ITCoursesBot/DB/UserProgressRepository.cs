@@ -121,4 +121,40 @@ public sealed class UserProgressRepository
 
         return distribution;
     }
+
+    // Возвращает тексты вопросов, где НЕ было ни одной ошибки
+    public async Task<List<string>> GetQuestionsAnsweredWithoutErrorsAsync(long userId)
+    {
+        var allQ = await _db.Questions.AsNoTracking().ToListAsync();
+        var allA = await _db.UserAnswers
+                           .Where(a => a.UserId == userId)
+                           .AsNoTracking()
+                           .ToListAsync();
+        var ok = new List<string>();
+        foreach (var q in allQ)
+        {
+            var ans = allA.Where(a => a.QuestionId == q.Id).ToList();
+            if (ans.Count > 0 && ans.All(a => a.IsCorrect))
+                ok.Add(q.Text.Trim());
+        }
+        return ok;
+    }
+
+    // Возвращает тексты вопросов, в которых была хотя бы одна ошибка
+    public async Task<List<string>> GetQuestionsWithErrorsAsync(long userId)
+    {
+        var allQ = await _db.Questions.AsNoTracking().ToListAsync();
+        var allA = await _db.UserAnswers
+                           .Where(a => a.UserId == userId)
+                           .AsNoTracking()
+                           .ToListAsync();
+        var bad = new List<string>();
+        foreach (var q in allQ)
+        {
+            var ans = allA.Where(a => a.QuestionId == q.Id).ToList();
+            if (ans.Any(a => !a.IsCorrect))
+                bad.Add(q.Text.Trim());
+        }
+        return bad;
+    }
 }

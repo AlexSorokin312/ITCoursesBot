@@ -11,12 +11,11 @@ public class UpdateRouter
     {
         foreach (var ctrl in _controllers)
         {
-            // каждый контроллер внутри конструктора проверяет Update
             ctrl.SetUpdate(update);
             if (ctrl.CanHandle())
             {
                 if (await ctrl.HandleAsync(ct))
-                    break; // если контроллер «забрал» апдейт — выходим
+                    break; 
             }
         }
     }

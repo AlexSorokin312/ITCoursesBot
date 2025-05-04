@@ -19,5 +19,7 @@
         public string InstructionsDialog { get; set; }
         public string InstructionsCodeExplain { get; set; }
         public string InstructionsMockInterview { get; set; }
+        public string InstructionsProgressSummary { get; set; }
+
     }
 }

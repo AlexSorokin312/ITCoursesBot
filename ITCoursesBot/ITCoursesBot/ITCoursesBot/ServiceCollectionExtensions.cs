@@ -50,7 +50,6 @@
 
             public static IServiceCollection AddBotControllers(this IServiceCollection services)
             {
-                // ручная регистрация контроллеров в нужном порядке
                 services.AddScoped<StartController>();
                 services.AddScoped<BeginQuizController>();
                 services.AddScoped<PassQuizController>();
@@ -60,7 +59,6 @@
                 services.AddScoped<DialogController>();
                 services.AddScoped<DefaultController>();
 
-                // UpdateRouter получит их через IEnumerable<BaseController>
                 services.AddScoped<UpdateRouter>(sp =>
                 {
                     var ctrls = new BaseController[]
@@ -78,7 +76,6 @@
                 });
                 return services;
             }
-
             public static IServiceCollection AddBotWorker(this IServiceCollection services)
             {
                 services.AddHostedService<BotWorker>();

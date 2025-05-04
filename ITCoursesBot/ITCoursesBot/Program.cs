@@ -30,9 +30,8 @@ namespace ITCoursesBot
             using (var scope = host.Services.CreateScope())
             {
                 var db = scope.ServiceProvider.GetRequiredService<BotDbContext>();
-
-                db.Database.Migrate();    // применит все миграции к файлу базы
-                DataSeeder.Seed(db);
+                //db.Database.Migrate();
+                //DataSeeder.Seed(db);
             }
 
             await host.RunAsync();
