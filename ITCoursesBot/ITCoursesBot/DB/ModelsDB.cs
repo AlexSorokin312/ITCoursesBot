@@ -20,8 +20,6 @@
             public int Id { get; set; }
             public string Name { get; set; } = "";
             public string ShortName { get; set; } = "";
-
-
             public ICollection<Lesson> Lessons { get; set; } = new List<Lesson>();
         }
 
@@ -64,8 +62,6 @@
             public long UserId { get; set; }
             public Question Question { get; set; } = null!;
             public User User { get; set; } = null!;
-
-
         }
 
         /// <summary>

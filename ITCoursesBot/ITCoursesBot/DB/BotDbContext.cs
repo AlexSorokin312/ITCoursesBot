@@ -23,7 +23,7 @@ namespace ITCoursesBot.DB
             model.Entity<User>(b =>
             {
                 b.HasKey(u => u.Id);
-                b.HasIndex(u => u.Username);                     // можно IsUnique(true), если нужны уникальные ники
+                b.HasIndex(u => u.Username);                    
                 b.Property(u => u.FirstLaunch).IsRequired();
                 b.Property(u => u.LastUse).IsRequired();
                 b.Property(u => u.UsageCount).IsRequired();

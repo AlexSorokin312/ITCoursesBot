@@ -132,34 +132,6 @@ public sealed class UserProgressRepository
         return bad;
     }
 
-    public async Task<List<QuestionDto>> GetErrorQuestionDtosAsync(long userId)
-    {
-        // 1) сгруппировать все ответы пользователя по вопросу
-        var answerGroups = await _db.UserAnswers
-            .Where(a => a.UserId == userId)
-            .AsNoTracking()
-            .ToListAsync();
-
-        var errorOnlyQuestionIds = answerGroups
-            .GroupBy(a => a.QuestionId)
-            // есть хотя бы одна ошибка...
-            .Where(g => g.Any(a => !a.IsCorrect)
-                // ...и нет ни одной правильной попытки
-                && g.All(a => !a.IsCorrect))
-            .Select(g => g.Key)
-            .ToList();
-
-        if (!errorOnlyQuestionIds.Any())
-            return new List<QuestionDto>();
-
-        // 2) выгружаем эти вопросы из базы как DTO
-        return await _db.Questions
-            .AsNoTracking()
-            .Where(q => errorOnlyQuestionIds.Contains(q.Id))
-            .Select(q => new QuestionDto(q.Id, q.Text.Trim()))
-            .ToListAsync();
-    }
-
 public async Task<List<CourseProgressDetailDto>> GetCourseProgressDetailedAsync(long userId)
     {
         // вытащили все вопросы с полным именем курса

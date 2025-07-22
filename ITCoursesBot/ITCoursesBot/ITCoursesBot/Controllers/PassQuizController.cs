@@ -1,6 +1,7 @@
-﻿using ITCoursesBot.Interfaces;
+﻿using Bot.Ports;
+using ITCoursesBot.Interfaces;
 using ITCoursesBot.ITCoursesBot.Configuration;
-using ITCoursesBot.ITCoursesBot.Services;
+using System.Text;
 using Telegram.Bot;
 
 namespace ITCoursesBot.ITCoursesBot.Controllers
@@ -9,9 +10,8 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
     {
         private readonly IOpenAIClient _openAi;
         private readonly OpenAISettings _openAISettings;
-        private readonly IQuizRepository _quizRepository;
-        private readonly QuestionsRepository _repository;
-        private readonly UserDbRepository _userDbRepository;
+        private readonly IProgressClient _progressClient;
+        private readonly IAiLimitClient _aiLimitClient;
 
         public PassQuizController(
             ITelegramBotClient bot,
@@ -20,15 +20,14 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
             IKeyboardBuilder keyboardBuilder,
             IOpenAIClient openAi,
             OpenAISettings openAISettings,
-            IQuizRepository quizRepository,
-            QuestionsRepository repository,
-            UserDbRepository userDbRepository) : base(bot, messageService, sessionManager, keyboardBuilder)
+            IProgressClient progressClient,
+            IAiLimitClient aiLimitClient
+        ) : base(bot, messageService, sessionManager, keyboardBuilder)
         {
             _openAi = openAi;
             _openAISettings = openAISettings;
-            _quizRepository = quizRepository;
-            _repository = repository;
-            _userDbRepository = userDbRepository;
+            _progressClient = progressClient;
+            _aiLimitClient = aiLimitClient;
         }
 
         public override async Task<bool> HandleAsync(CancellationToken ct)
@@ -37,80 +36,183 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
             if (session?.Mode != BotMode.PassQuiz)
                 return false;
 
-            // 1. inline-кнопки
+            // 1) inline‑кнопки: next, finish, show_all
             if (await HandleInlineCallbackAsync(session, ct))
                 return true;
 
-            // 2. получаем «ввод» пользователя — текст или расшифровку аудио
+            // 2) Получаем ввод: текст или аудио
             var msg = CurrentUpdate.Message;
             if (msg == null)
                 return false;
 
-            string? answerText = msg.Text;
-            if (string.IsNullOrWhiteSpace(answerText) && msg.Voice != null)
+            string? answer = msg.Text;
+            if (string.IsNullOrWhiteSpace(answer) && msg.Voice != null)
             {
-                // скачиваем и расшифровываем голосовое
-                using var audio = await DownloadVoiceStreamAsync(msg.Voice.FileId, ct);
-                answerText = await _openAi.TranscribeAudioAsync(
+                using var audio = await DownloadVoiceAsync(msg.Voice.FileId, ct);
+                answer = await _openAi.TranscribeAudioAsync(
                     audio,
                     fileName: $"{msg.Voice.FileUniqueId}.ogg"
                 );
             }
 
-            await _userDbRepository.UpdateUsageAsync(session.ChatId);
+            if (string.IsNullOrWhiteSpace(answer))
+                return false;
 
-            if (string.IsNullOrWhiteSpace(answerText))
-                return false;   // ни текст, ни голос
-
-            // 3. загрузка вопросов, если нужно
-            if (await EnsureQuestionsLoadedAsync(session, answerText, ct))
+            // 3) Учёт запроса к ИИ + проверка лимита
+            await _aiLimitClient.RecordRequestAsync(ChatId, ct);
+            if (await _aiLimitClient.IsLimitReachedAsync(ChatId, ct))
+            {
+                await _messageService.SendTextAsync(
+                    ChatId,
+                    "❗️ Квота запросов к ИИ исчерпана. Попробуйте позже.",
+                    ct: ct);
                 return true;
+            }
 
-            // 4. работаем с ответом
-            await ProcessAnswerAsync(session, answerText, ct);
+            // 4) Если вопросов нет — просим начать заново
+            var questions = session.QuestionsForQuiz;
+            if (questions == null || questions.Count == 0)
+            {
+                await _messageService.SendTextAsync(
+                    ChatId,
+                    "❗️ Вопросы не загружены. Введите команду /beginquiz, чтобы начать тест.",
+                    ct: ct);
+                return true;
+            }
+
+            // 5) Обрабатываем ответ на текущий вопрос
+            await ProcessAnswerAsync(session, answer, ct);
             return true;
         }
 
-        /// <summary>
-        /// Скачивает голосовое из Telegram и выдаёт в виде Stream.
-        /// </summary>
-        private async Task<Stream> DownloadVoiceStreamAsync(string fileId, CancellationToken ct)
+        private async Task ProcessAnswerAsync(ChatSession session, string answer, CancellationToken ct)
         {
-            // 1) метаданные
-            var file = await _bot.GetFile(fileId, cancellationToken: ct);
+            var dto = session.QuestionsForQuiz![session.QuestionIndex];
 
-            // 2) скачиваем в память
+            // Формируем запрос к OpenAI
+            var sys = _openAISettings.InstructionsQuestions;
+            var prompt = $"Вопрос: {dto.Text}\nОтвет студента: {answer}";
+            var raw = await _openAi.GetChatResponseAsync(sys, prompt);
+
+            // Парсим ответ AI
+            var (isCorrect, comment) = ParseAiResponse(raw);
+
+            // Сохраняем попытку через API
+            await _progressClient.AddAnswerAsync(
+                new AddAnswerDto(
+                    TelegramId: ChatId,
+                    QuestionId: dto.Id,
+                    AnswerText: answer,
+                    IsCorrect: isCorrect
+                ), ct);
+
+            // Отправляем комментарий AI
+            await _messageService.SendTextAsync(ChatId, comment, ct: ct);
+
+            if (isCorrect)
+            {
+                session.QuestionIndex++;
+                await SendCorrectOrNextAsync(session, ct);
+            }
+            else
+            {
+                await _messageService.SendTextAsync(
+                    ChatId,
+                    "❌ Неправильно. Попробуйте ещё раз.",
+                    ct: ct);
+            }
+        }
+
+        private (bool IsCorrect, string Comment) ParseAiResponse(string aiReply)
+        {
+            const string TrueTag = "(TRUE_ANSWER)";
+            const string FalseTag = "(FALSE_ANSWER)";
+            bool ok = aiReply.Contains(TrueTag, StringComparison.OrdinalIgnoreCase);
+            var cleaned = aiReply
+                .Replace(TrueTag, "", StringComparison.OrdinalIgnoreCase)
+                .Replace(FalseTag, "", StringComparison.OrdinalIgnoreCase)
+                .Trim();
+            return (ok, cleaned);
+        }
+
+        private async Task SendCorrectOrNextAsync(ChatSession session, CancellationToken ct)
+        {
+            if (session.QuestionIndex >= session.QuestionsForQuiz!.Count)
+            {
+                await _messageService.SendTextAsync(
+                    ChatId,
+                    "✅ Все вопросы пройдены! Выберите действие.",
+                    replyMarkup: _keyboardBuilder.Build(),
+                    ct: ct);
+                session.Mode = BotMode.None;
+                return;
+            }
+
+            // Предлагаем перейти к следующему вопросу
+            await _messageService.SendTextAsync(
+                ChatId,
+                "✅ Правильно! Перейти к следующему?",
+                replyMarkup: _keyboardBuilder.BuildNextFinish(true),
+                ct: ct);
+        }
+
+        private async Task<Stream> DownloadVoiceAsync(string fileId, CancellationToken ct)
+        {
+            var fileInfo = await _bot.GetFile(fileId, cancellationToken: ct);
             var ms = new MemoryStream();
             await _bot.DownloadFile(
-                filePath: file.FilePath!,
+                filePath: fileInfo.FilePath!,
                 destination: ms,
-                cancellationToken: ct
-            );
+                cancellationToken: ct);
             ms.Position = 0;
             return ms;
         }
 
-        // --- 1. Inline-кнопки ---
         private async Task<bool> HandleInlineCallbackAsync(ChatSession session, CancellationToken ct)
         {
             var data = CurrentUpdate.CallbackQuery?.Data;
-            if (data == null) return false;
+            if (string.IsNullOrEmpty(data))
+                return false;
 
             switch (data)
             {
                 case "next_question":
                     await SendNextQuestionAsync(session, ct);
                     break;
-
                 case "finish":
                     await FinishQuizAsync(session, ct);
                     break;
-
+                case "show_all":
+                    await ShowAllQuestionsAsync(session, ct);
+                    break;
                 default:
                     return false;
             }
-
             return true;
+        }
+
+        private async Task ShowAllQuestionsAsync(ChatSession session, CancellationToken ct)
+        {
+            var questions = session.QuestionsForQuiz!;
+            var sb = new StringBuilder();
+            for (int i = session.QuestionIndex; i < questions.Count; i++)
+                sb.AppendLine($"{i + 1}. {questions[i].Text}");
+
+            await _messageService.SendTextAsync(
+                ChatId,
+                sb.Length > 0 ? sb.ToString() : "❗️ Нет оставшихся вопросов.",
+                replyMarkup: _keyboardBuilder.BuildBackToMenu(),
+                ct: ct);
+        }
+
+        private async Task SendNextQuestionAsync(ChatSession session, CancellationToken ct)
+        {
+            var dto = session.QuestionsForQuiz![session.QuestionIndex];
+            await _messageService.SendTextAsync(
+                ChatId,
+                $"❓ Вопрос {session.QuestionIndex + 1}/{session.QuestionsForQuiz.Count}:\n{dto.Text}",
+                replyMarkup: _keyboardBuilder.BuildNextFinish(true),
+                ct: ct);
         }
 
         private async Task FinishQuizAsync(ChatSession session, CancellationToken ct)
@@ -118,134 +220,14 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
             session.Mode = BotMode.None;
             session.QuestionsForQuiz?.Clear();
             session.QuestionIndex = 0;
-
             await _messageService.SendTextAsync(
                 ChatId,
-                "Выберите опцию работы с чатом",
-                replyMarkup: _keyboardBuilder.Build()
-            );
+                "🔚 Тест завершён. Выберите опцию.",
+                replyMarkup: _keyboardBuilder.Build(),
+                ct: ct);
         }
 
-        // --- 2+3. Загрузка списка вопросов ---
-        private async Task<bool> EnsureQuestionsLoadedAsync(ChatSession session, string lessonId, CancellationToken ct)
-        {
-            if (session.QuestionsForQuiz != null && session.QuestionsForQuiz.Any())
-                return false;
-
-            // загружаем
-            var questions = _repository.GetQuestions(lessonId);
-            if (questions == null || !questions.Any())
-            {
-                await _messageService.SendTextAsync(
-                    ChatId,
-                    "Вопросов для этого урока не найдено. Попробуйте другой номер."
-                );
-                return true; // апдейт «съеден»
-            }
-
-            session.QuestionsForQuiz = questions;
-            session.QuestionIndex = 0;
-            await SendNextQuestionAsync(session, ct);
-            return true;
-        }
-
-        // --- 4. Обработка ответа студента ---
-        private async Task ProcessAnswerAsync(ChatSession session, string answerText, CancellationToken ct)
-        {
-            // 1) достаём DTO вопроса
-            var questionDto = session.QuestionsForQuiz![session.QuestionIndex];
-
-            // 2) формируем prompt для AI
-            var systemInst = _openAISettings.InstructionsQuestions;
-            var prompt = $"Вопрос: {questionDto.Text}\nОтвет студента: {answerText}";
-
-            // 3) получаем ответ от AI и парсим его
-            string raw = await _openAi.GetChatResponseAsync(systemInst, prompt);
-            var (isCorrect, comment) = ParseAiResponse(raw);
-
-            // 4) сохраняем каждую попытку в БД (INSERT новой записи)
-            await _userDbRepository.AddUserAnswerAsync(
-                telegramId: CurrentUpdate.Message!.From!.Id,
-                username: CurrentUpdate.Message.From.Username ?? string.Empty,
-                questionId: questionDto.Id,
-                answerText: answerText,
-                isCorrect: isCorrect
-            );
-
-            // 5) шлём пользователю комментарий
-            await _messageService.SendTextAsync(ChatId, comment);
-
-            // 6) если ответ верный — двигаем индекс и предлагаем следующий
-            if (isCorrect)
-            {
-                session.QuestionIndex++;
-                await SendCorrectAsync(session, ct);
-            }
-            else
-            {
-                await _messageService.SendTextAsync(
-                    ChatId,
-                    "Попробуйте ещё раз — уточните ответ."
-                );
-            }
-        }
-
-        private (bool IsCorrect, string Comment) ParseAiResponse(string aiReply)
-        {
-            const string trueTag = "(TRUE_ANSWER)";
-            const string falseTag = "(FALSE_ANSWER)";
-
-            bool ok = aiReply.Contains(trueTag, StringComparison.OrdinalIgnoreCase);
-            var cleaned = aiReply
-                .Replace(trueTag, "", StringComparison.OrdinalIgnoreCase)
-                .Replace(falseTag, "", StringComparison.OrdinalIgnoreCase)
-                .Trim();
-
-            return (ok, cleaned);
-        }
-
-        private async Task SendCorrectAsync(ChatSession session, CancellationToken ct)
-        {
-            bool hasMore = session.QuestionIndex < session.QuestionsForQuiz!.Count;
-            var kb = _keyboardBuilder.BuildNextFinish(hasMore);
-
-            await _messageService.SendTextAsync(
-                ChatId,
-                hasMore
-                    ? "Правильно! Переходим к следующему?"
-                    : "Правильно! Это был последний вопрос.",
-                replyMarkup: kb
-            );
-        }
-
-        // --- Вспомогательный метод не трогаем ---
-        private async Task SendNextQuestionAsync(ChatSession session, CancellationToken ct)
-        {
-            if (session.QuestionsForQuiz == null
-                || session.QuestionIndex >= session.QuestionsForQuiz.Count)
-            {
-                // конец квиза…
-            }
-            else
-            {
-                var nextDto = session.QuestionsForQuiz[session.QuestionIndex];
-                await _messageService.SendTextAsync(
-                    ChatId,
-                    $"❓ Вопрос {session.QuestionIndex + 1}/{session.QuestionsForQuiz.Count}:\n{nextDto.Text}"
-                );
-            }
-        }
-
-        public override bool CanHandle()
-        {
-            var session = GetCurrentSessionById(ChatId);
-            if (session == null)
-                return false;
-
-            if (session.Mode != BotMode.PassQuiz)
-                return false;
-
-            return true;
-        }
+        public override bool CanHandle() =>
+            GetCurrentSessionById(ChatId)?.Mode == BotMode.PassQuiz;
     }
 }

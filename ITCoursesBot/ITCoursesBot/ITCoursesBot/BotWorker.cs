@@ -22,9 +22,18 @@ public class BotWorker : BackgroundService
             foreach (var upd in updates)
             {
                 _offset = upd.Id + 1;
-                using var scope = _sp.CreateScope();
-                var router = scope.ServiceProvider.GetRequiredService<UpdateRouter>();
-                await router.RouteAsync(upd, stoppingToken);
+                try
+                {
+                    using var scope = _sp.CreateScope();
+                    var router = scope.ServiceProvider.GetRequiredService<UpdateRouter>();
+                    await router.RouteAsync(upd, stoppingToken);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"❌ DI‑error: {ex}");
+                    await Task.Delay(3000, stoppingToken);    // чтобы не уйти в цикл падений
+                
+                }
             }
         }
     }

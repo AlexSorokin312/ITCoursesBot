@@ -1,29 +1,26 @@
-﻿using System.Text;
-using ITCoursesBot.DB;
-using ITCoursesBot.Interfaces;
+﻿using ITCoursesBot.Interfaces;
 using ITCoursesBot.ITCoursesBot.Configuration;
+using System.Text;
 using Telegram.Bot;
 
 namespace ITCoursesBot.ITCoursesBot.Controllers
 {
     public class ButtonHandlerController : BaseController
     {
-        private readonly IUserStateStore _store;
         private readonly IOpenAIClient _openAi;
         private readonly OpenAISettings _aiSetting;
 
         private readonly UserProgressRepository _progressRepo;
-        private readonly IQuizRepository _repo;
 
         public ButtonHandlerController(ITelegramBotClient bot,
             IMessageService messageService,
             ISessionManager sessionManager,
             OpenAISettings openAISettings,
             IKeyboardBuilder keyboardBuilder,
-            UserProgressRepository progressRepo,
+            //UserProgressRepository progressRepo,
             IOpenAIClient openAi) : base(bot, messageService, sessionManager, keyboardBuilder)
         {
-            _progressRepo = progressRepo;
+            //_progressRepo = progressRepo;
             _openAi = openAi;
             _aiSetting = openAISettings;
         }
@@ -68,7 +65,7 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
 
             if (buttonName == KeyboardBuilder.REWORK_BUTTON_NAME)
             {
-                // 1) Получаем DTO вопросов с ошибками
+                /*// 1) Получаем DTO вопросов с ошибками
                 var badDtos = await _progressRepo.GetErrorQuestionDtosAsync(ChatId);
                 if (badDtos.Count == 0)
                 {
@@ -92,7 +89,7 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
                     $"❓ Вопрос 1/{badDtos.Count}:\n{first.Text}",
                     replyMarkup: _keyboardBuilder.BuildBackToMenu()
                 );
-                return true;
+                return true;*/
             }
 
             if (buttonName == KeyboardBuilder.BACK_TO_MENU_BUTTON_NAME)
