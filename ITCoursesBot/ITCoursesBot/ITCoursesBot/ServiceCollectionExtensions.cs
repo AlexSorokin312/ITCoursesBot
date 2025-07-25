@@ -4,7 +4,6 @@ using ITCoursesBot.Interfaces;
 using ITCoursesBot.ITCoursesBot.Configuration;
 using ITCoursesBot.ITCoursesBot.Controllers;
 using ITCoursesBot.ITCoursesBot.Models;
-using ITCoursesBot.ITCoursesBot.Services;
 using ITCoursesBot.ITCoursesBot.Services.OpenAI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -45,8 +44,6 @@ namespace ITCoursesBot.ITCoursesBot
             services.AddScoped<IMessageService, TelegramMessageService>();
             services.AddScoped<IOpenAIClient, OpenAIClient>();
             services.AddScoped<IKeyboardBuilder, KeyboardBuilder>();
-            services.AddScoped<UserDbRepository>();
-            services.AddScoped<UserProgressRepository>();
 
             return services;
         }
@@ -70,7 +67,7 @@ namespace ITCoursesBot.ITCoursesBot
                         sp.GetRequiredService<BeginQuizController>(),
                         sp.GetRequiredService<PassQuizController>(),
                         sp.GetRequiredService<ButtonHandlerController>(),
-                        //sp.GetRequiredService<CodeExplainController>(),
+                        sp.GetRequiredService<CodeExplainController>(),
                         //sp.GetRequiredService<MockInterviewController>(),
                         //sp.GetRequiredService<DialogController>(),
                         //sp.GetRequiredService<DefaultController>()
