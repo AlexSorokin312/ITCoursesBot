@@ -4,8 +4,6 @@ using Telegram.Bot.Types;
 
 public abstract class BaseController
 {
-    private ITelegramBotClient bot;
-
     protected ITelegramBotClient _bot { get; private set; } = null!;
     protected IMessageService _messageService { get; private set; }
     protected ISessionManager _sessionManager { get; private set; }
@@ -36,6 +34,6 @@ public abstract class BaseController
     public abstract Task<bool> HandleAsync(CancellationToken ct);
     protected long ChatId =>
         CurrentUpdate.Message?.Chat.Id
-      ?? CurrentUpdate.CallbackQuery?.Message.Chat.Id
+      ?? CurrentUpdate.CallbackQuery?.Message?.Chat.Id
       ?? 0;
 }

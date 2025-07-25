@@ -8,3 +8,9 @@ public class Question
     public int LessonId { get; set; }
     public string Text { get; set; } = default!;
 }
+
+public sealed record QuestionDto(
+    int Id,
+    int LessonId,
+    string Text
+);

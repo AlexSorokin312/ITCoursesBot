@@ -28,3 +28,15 @@ public sealed record QuestionStatsDto(
     int IncorrectCount,
     int UnansweredCount
 );
+
+public sealed record CourseProgressDto(
+    string Course,
+    int CorrectCount,
+    int IncorrectCount,
+    int UnansweredCount
+);
+
+public sealed record LessonErrorsDto(
+    string LessonName,
+    int WrongCount
+);

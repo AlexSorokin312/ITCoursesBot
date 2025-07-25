@@ -50,7 +50,7 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
                 await _messageService.SendTextAsync(
                     ChatId,
                     "❌ Не удалось зарегистрировать пользователя. Попробуйте позже.",
-                    ct: ct
+                    cancellationToken: ct
                 );
                 Console.WriteLine($"[StartController] Не удалось создать/получить user: {ex}");
                 return true;
@@ -61,7 +61,7 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
                 ChatId,
                 $"👋 Привет, {user.Name}! Выберите опцию работы с чатом:",
                 replyMarkup: _keyboardBuilder.Build(),
-                ct: ct
+                cancellationToken: ct
             );
 
             // 3) Создаём новую сессию или возвращаем существующую

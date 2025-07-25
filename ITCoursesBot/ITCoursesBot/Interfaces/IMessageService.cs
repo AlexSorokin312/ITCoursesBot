@@ -6,7 +6,7 @@ public interface IMessageService
         long chatId,
         string rawText,
         InlineKeyboardMarkup? replyMarkup = null,
-        CancellationToken     ct          = default);
+        CancellationToken cancellationToken = default);
 
     Task SendVoiceAsync(
         long chatId,

@@ -49,7 +49,7 @@ public sealed record ErrorByLessonDto(
     string LessonTitle,
     int WrongCount);
 
-public sealed record CourseProgressDto(
+public sealed record CourseProgressDto1(
     string CourseShort,
     int AnsweredQuestions,
     int TotalQuestions);

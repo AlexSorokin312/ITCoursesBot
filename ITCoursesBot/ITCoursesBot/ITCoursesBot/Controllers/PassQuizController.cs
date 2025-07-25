@@ -33,14 +33,13 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
         public override async Task<bool> HandleAsync(CancellationToken ct)
         {
             var session = GetCurrentSessionById(ChatId);
+
             if (session?.Mode != BotMode.PassQuiz)
                 return false;
 
-            // 1) inline‑кнопки: next, finish, show_all
             if (await HandleInlineCallbackAsync(session, ct))
                 return true;
 
-            // 2) Получаем ввод: текст или аудио
             var msg = CurrentUpdate.Message;
             if (msg == null)
                 return false;
@@ -49,23 +48,18 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
             if (string.IsNullOrWhiteSpace(answer) && msg.Voice != null)
             {
                 using var audio = await DownloadVoiceAsync(msg.Voice.FileId, ct);
-                answer = await _openAi.TranscribeAudioAsync(
-                    audio,
-                    fileName: $"{msg.Voice.FileUniqueId}.ogg"
-                );
+                answer = await _openAi.TranscribeAudioAsync(audio, $"{msg.Voice.FileUniqueId}.ogg");
             }
 
             if (string.IsNullOrWhiteSpace(answer))
                 return false;
 
-            // 3) Учёт запроса к ИИ + проверка лимита
-            await _aiLimitClient.RecordRequestAsync(ChatId, ct);
             if (await _aiLimitClient.IsLimitReachedAsync(ChatId, ct))
             {
                 await _messageService.SendTextAsync(
                     ChatId,
                     "❗️ Квота запросов к ИИ исчерпана. Попробуйте позже.",
-                    ct: ct);
+                    cancellationToken: ct);
                 return true;
             }
 
@@ -76,12 +70,15 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
                 await _messageService.SendTextAsync(
                     ChatId,
                     "❗️ Вопросы не загружены. Введите команду /beginquiz, чтобы начать тест.",
-                    ct: ct);
+                    cancellationToken: ct);
                 return true;
             }
 
             // 5) Обрабатываем ответ на текущий вопрос
             await ProcessAnswerAsync(session, answer, ct);
+
+            await _aiLimitClient.RecordRequestAsync(ChatId, ct);
+
             return true;
         }
 
@@ -107,7 +104,7 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
                 ), ct);
 
             // Отправляем комментарий AI
-            await _messageService.SendTextAsync(ChatId, comment, ct: ct);
+            await _messageService.SendTextAsync(ChatId, comment, cancellationToken: ct);
 
             if (isCorrect)
             {
@@ -119,7 +116,7 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
                 await _messageService.SendTextAsync(
                     ChatId,
                     "❌ Неправильно. Попробуйте ещё раз.",
-                    ct: ct);
+                    cancellationToken: ct);
             }
         }
 
@@ -143,7 +140,7 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
                     ChatId,
                     "✅ Все вопросы пройдены! Выберите действие.",
                     replyMarkup: _keyboardBuilder.Build(),
-                    ct: ct);
+                    cancellationToken: ct);
                 session.Mode = BotMode.None;
                 return;
             }
@@ -153,7 +150,7 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
                 ChatId,
                 "✅ Правильно! Перейти к следующему?",
                 replyMarkup: _keyboardBuilder.BuildNextFinish(true),
-                ct: ct);
+                cancellationToken: ct);
         }
 
         private async Task<Stream> DownloadVoiceAsync(string fileId, CancellationToken ct)
@@ -202,7 +199,7 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
                 ChatId,
                 sb.Length > 0 ? sb.ToString() : "❗️ Нет оставшихся вопросов.",
                 replyMarkup: _keyboardBuilder.BuildBackToMenu(),
-                ct: ct);
+                    cancellationToken: ct);
         }
 
         private async Task SendNextQuestionAsync(ChatSession session, CancellationToken ct)
@@ -212,7 +209,7 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
                 ChatId,
                 $"❓ Вопрос {session.QuestionIndex + 1}/{session.QuestionsForQuiz.Count}:\n{dto.Text}",
                 replyMarkup: _keyboardBuilder.BuildNextFinish(true),
-                ct: ct);
+                cancellationToken: ct);
         }
 
         private async Task FinishQuizAsync(ChatSession session, CancellationToken ct)
@@ -224,7 +221,7 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
                 ChatId,
                 "🔚 Тест завершён. Выберите опцию.",
                 replyMarkup: _keyboardBuilder.Build(),
-                ct: ct);
+                cancellationToken: ct);
         }
 
         public override bool CanHandle() =>

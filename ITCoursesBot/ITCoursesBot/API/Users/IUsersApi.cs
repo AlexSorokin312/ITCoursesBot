@@ -1,6 +1,6 @@
 ﻿using Refit;
 
-public interface IUsersApi : IUserClient
+public interface IUsersApi
 {
     [Get("/api/users/{telegramId}")]
     new Task<UserDto?> GetAsync(long telegramId, CancellationToken ct);

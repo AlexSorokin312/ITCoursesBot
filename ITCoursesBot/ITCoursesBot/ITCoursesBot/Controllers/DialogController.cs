@@ -1,6 +1,5 @@
 ﻿using ITCoursesBot.Interfaces;
 using Telegram.Bot;
-using Telegram.Bot.Types;
 
 namespace ITCoursesBot.ITCoursesBot.Controllers
 {
