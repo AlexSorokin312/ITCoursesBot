@@ -1,8 +1,11 @@
-﻿// Program.cs  (.NET 8, консоль‑worker)
-using ITCoursesBot.ITCoursesBot;             // ― здесь лежат AddBot*
+﻿using ITCoursesBot.Interfaces;
+using ITCoursesBot.ITCoursesBot;
+using ITCoursesBot.ITCoursesBot.Configuration;
+using ITCoursesBot.ITCoursesBot.Services.OpenAI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 
 internal class Program
 {
@@ -22,6 +25,13 @@ internal class Program
                 // 1. Telegram / OpenAI ключи
                 services.AddBotConfiguration(ctx.Configuration);
 
+                // 2. Настройки OpenAI
+                services.Configure<OpenAISettings>(
+                    ctx.Configuration.GetSection("OpenAISettings"));
+                services.AddSingleton(resolver =>
+                    resolver.GetRequiredService<IOptions<OpenAISettings>>().Value);
+                services.AddHttpClient<IOpenAIClient, OpenAIClient>();
+
                 // 2. Краткосрочное состояние бота (сессии)
                 services.AddBotState();
 
@@ -36,6 +46,20 @@ internal class Program
 
                 // 6. Фоновый worker, который крутит long‑polling
                 services.AddBotWorker();
+
+                services.AddTransient<IUpdateMiddleware, StartMiddleware>();
+                services.AddTransient<IUpdateMiddleware, ReworkMiddleware>();
+                services.AddTransient<IUpdateMiddleware, ProgressSummaryMiddleware>();
+                services.AddTransient<IUpdateMiddleware, CodeExplainMiddleware>();
+                services.AddTransient<IUpdateMiddleware, BeginQuizMiddleware>();
+                services.AddTransient<IUpdateMiddleware, PassQuizMiddleware>();
+                services.AddTransient<IUpdateMiddleware, DialogMiddleware>();
+                services.AddTransient<IUpdateMiddleware, ReworkMiddleware>();
+                services.AddTransient<IUpdateMiddleware, MockInterviewMiddleware>();
+                services.AddTransient<IUpdateMiddleware, PromoCodesMiddleware>();
+
+                services.AddSingleton<UpdateMiddlewarePipeline>();
+                services.AddHostedService<BotWorker>();
             })
             .Build();
 

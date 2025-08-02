@@ -20,6 +20,7 @@
         public string InstructionsCodeExplain { get; set; }
         public string InstructionsMockInterview { get; set; }
         public string InstructionsProgressSummary { get; set; }
+        public string InstructionsInterview { get; set; }
 
     }
 }

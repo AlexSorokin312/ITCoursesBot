@@ -78,56 +78,50 @@ namespace ITCoursesBot.ITCoursesBot
         }
 
         public static IServiceCollection AddApiClients(this IServiceCollection services,
-                                                       IConfiguration cfg)
+                                                IConfiguration cfg)
         {
-            // 1) получаем URL один раз
+            // 1) Читаем URL из конфига
             var baseUrl = cfg["Api:BaseUrl"]
-                          ?? "https://localhost:7182";    // можно по‑умолчанию
+                          ?? throw new InvalidOperationException("Api:BaseUrl не задан");
 
-            // 2) Refit-клиент для Users
+            // 2) Refit‑клиент для Users
             services.AddRefitClient<IUsersApi>()
-                    .ConfigureHttpClient(c =>
-                    {
-                        c.BaseAddress = new Uri("https://localhost:7182");
-                        // если нужно — handler для dev‑TLS
-                        c.DefaultRequestVersion = new Version(2, 0);
-                    })
+                    .ConfigureHttpClient(c => c.BaseAddress = new Uri(baseUrl))
                     .ConfigurePrimaryHttpMessageHandler(_ =>
                         new HttpClientHandler
                         {
                             ServerCertificateCustomValidationCallback =
                                 HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
                         });
-
             services.AddTransient<IUserClient, UsersApiClient>();
 
-            // 3) Typed HttpClient для вопросов — **всегда**, вне DEBUG
-            services.AddHttpClient<IQuestionsClient, QuestionsClient>(client =>
+            // 3) HttpClient для Questions
+            services.AddHttpClient<IQuestionsClient, QuestionsClient>(c =>
             {
-                client.BaseAddress = new Uri(baseUrl);
-                client.Timeout = TimeSpan.FromSeconds(60);
-            })
-            .AddPolicyHandler(GetRetry());   // если вы используете Polly
+                c.BaseAddress = new Uri(baseUrl);
+                c.Timeout = TimeSpan.FromSeconds(60);
+            }).AddPolicyHandler(GetRetry());
 
-            services.AddHttpClient<IProgressClient, ProgressClient>(client =>
+            // 4) HttpClient для Progress
+            services.AddHttpClient<IProgressClient, ProgressClient>(c =>
             {
-                client.BaseAddress = new Uri(baseUrl);
-                client.Timeout = TimeSpan.FromSeconds(50);
-            })
-            .AddPolicyHandler(GetRetry());  // если используете Polly
-            services.AddHttpClient<ILessonClient, LessonClient>(client =>
-            {
-                client.BaseAddress = new Uri(baseUrl);
-                client.Timeout = TimeSpan.FromSeconds(50);
-            })
-            .AddPolicyHandler(GetRetry());
+                c.BaseAddress = new Uri(baseUrl);
+                c.Timeout = TimeSpan.FromSeconds(50);
+            }).AddPolicyHandler(GetRetry());
 
-            services.AddHttpClient<IAiLimitClient, AiLimitClient>(client =>
+            // 5) HttpClient для Lesson
+            services.AddHttpClient<ILessonClient, LessonClient>(c =>
             {
-                client.BaseAddress = new Uri(baseUrl);
-                client.Timeout = TimeSpan.FromSeconds(60);
-            })
-            .AddPolicyHandler(GetRetry());
+                c.BaseAddress = new Uri(baseUrl);
+                c.Timeout = TimeSpan.FromSeconds(50);
+            }).AddPolicyHandler(GetRetry());
+
+            // 6) HttpClient для AI‑лимита
+            services.AddHttpClient<IAiLimitClient, AiLimitClient>(c =>
+            {
+                c.BaseAddress = new Uri(baseUrl);
+                c.Timeout = TimeSpan.FromSeconds(60);
+            }).AddPolicyHandler(GetRetry());
 
             return services;
         }

@@ -77,7 +77,7 @@ namespace ITCoursesBot.ITCoursesBot.Controllers
             // 5) Обрабатываем ответ на текущий вопрос
             await ProcessAnswerAsync(session, answer, ct);
 
-            await _aiLimitClient.RecordRequestAsync(ChatId, ct);
+            //await _aiLimitClient.RecordRequestAsync(ChatId, ct);
 
             return true;
         }

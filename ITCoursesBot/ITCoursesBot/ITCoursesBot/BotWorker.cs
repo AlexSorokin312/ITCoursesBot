@@ -1,40 +1,46 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
+﻿using Microsoft.Extensions.Hosting;
 using Telegram.Bot;
+using Telegram.Bot.Polling;
+using Telegram.Bot.Types.Enums;
 
 public class BotWorker : BackgroundService
 {
-    private readonly ITelegramBotClient _bot;
-    private readonly IServiceProvider _sp;
-    private int _offset = 0;
+    private readonly ITelegramBotClient _botClient;
+    private readonly UpdateMiddlewarePipeline _pipeline;
 
-    public BotWorker(ITelegramBotClient bot, IServiceProvider sp)
+    public BotWorker(
+        ITelegramBotClient botClient,
+        UpdateMiddlewarePipeline pipeline)
     {
-        _bot = bot;
-        _sp = sp;
+        _botClient = botClient;
+        _pipeline = pipeline;
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    protected override Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        while (!stoppingToken.IsCancellationRequested)
-        {
-            var updates = await _bot.GetUpdates(_offset, cancellationToken: stoppingToken);
-            foreach (var upd in updates)
+        LoggerService.LogInfo("Бот запускается и начинает приём обновлений");
+
+        _botClient.StartReceiving(
+            (client, update, token) =>
+                _pipeline.ProcessAsync(new UpdateContext(client, update, token)),
+
+            (client, exception, token) =>
             {
-                _offset = upd.Id + 1;
-                try
-                {
-                    using var scope = _sp.CreateScope();
-                    var router = scope.ServiceProvider.GetRequiredService<UpdateRouter>();
-                    await router.RouteAsync(upd, stoppingToken);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"❌ DI‑error: {ex}");
-                    await Task.Delay(3000, stoppingToken);    // чтобы не уйти в цикл падений
-                
-                }
-            }
-        }
+                LoggerService.LogError(
+                    $"Ошибка при приёме обновлений: {exception.Message}\n{exception.StackTrace}");
+                return Task.CompletedTask;
+            },
+
+            new ReceiverOptions
+            {
+                AllowedUpdates = Array.Empty<UpdateType>(), // все типы апдейтов
+                DropPendingUpdates = false,                     // не сбрасывать ожидающие
+                Limit = 5                          // макс. одновр. апдейтов
+            },
+            cancellationToken: stoppingToken
+        );
+
+        LoggerService.LogInfo("Бот запущен и слушает обновления");
+        return Task.CompletedTask;
     }
 }

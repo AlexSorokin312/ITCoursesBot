@@ -1,12 +1,10 @@
 ﻿using Bot.Ports;
-using System.Net.Http;
 using System.Net.Http.Json;
-using System.Threading;
-using System.Threading.Tasks;
 
 public class AiLimitClient : IAiLimitClient
 {
     private readonly HttpClient _http;
+
     public AiLimitClient(HttpClient http) => _http = http;
 
     public async Task RecordRequestAsync(long telegramId, CancellationToken ct = default)
@@ -37,5 +35,27 @@ public class AiLimitClient : IAiLimitClient
     {
         var resp = await _http.PostAsync($"api/ai-requests/{telegramId}/reset-force", null, ct);
         resp.EnsureSuccessStatusCode();
+    }
+
+    public async Task<RequestInfo> GetRequestInfoAsync(long telegramId, CancellationToken ct = default)
+    {
+        var resp = await _http.GetFromJsonAsync<RequestInfo>($"api/ai-requests/{telegramId}/request-info", ct);
+
+        if (resp == null)
+            throw new InvalidOperationException("Пустой ответ от /request-info");
+
+        return resp;
+    }
+
+    // Новый метод для применения промокода
+    public async Task ApplyPromoCodeAsync(long telegramId, string promoCode, CancellationToken ct = default)
+    {
+        var response = await _http.PostAsJsonAsync($"api/ai-requests/{telegramId}/apply-promo-code", promoCode, ct);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorMessage = await response.Content.ReadAsStringAsync();
+            throw new InvalidOperationException($"Failed to apply promo code: {errorMessage}");
+        }
     }
 }
