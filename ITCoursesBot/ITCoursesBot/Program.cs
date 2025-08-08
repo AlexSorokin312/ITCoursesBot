@@ -41,9 +41,6 @@ internal class Program
                 // 4. HTTP‑клиент к вашему Web‑API (то, что мы добавили = Users)
                 services.AddApiClients(ctx.Configuration);
 
-                // 5. Контроллеры + роутер
-                services.AddBotControllers();
-
                 // 6. Фоновый worker, который крутит long‑polling
                 services.AddBotWorker();
 

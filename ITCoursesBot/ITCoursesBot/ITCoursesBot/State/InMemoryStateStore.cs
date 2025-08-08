@@ -1,5 +1,4 @@
-﻿// State/InMemoryStateStore.cs
-using ITCoursesBot.Interfaces;
+﻿using ITCoursesBot.Interfaces;
 using System.Collections.Concurrent;
 
 public class InMemoryStateStore : IUserStateStore
