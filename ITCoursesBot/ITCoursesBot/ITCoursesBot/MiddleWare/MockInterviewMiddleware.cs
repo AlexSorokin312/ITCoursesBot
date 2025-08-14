@@ -130,8 +130,6 @@ public class MockInterviewMiddleware : IUpdateMiddleware
                     var answer = !string.IsNullOrWhiteSpace(msg.Text)
                         ? msg.Text.Trim()
                         : await SafeTranscribeAsync(ctx, msg);
-
-                    if (!string.IsNullOrWhiteSpace(answer))
                     {
                         LoggerService.LogInfo($"Пользователь {chatId} ответил на вопрос {session.QuestionIndex + 1}");
                         await ProcessAnswerAsync(ctx, session, answer);
@@ -309,7 +307,7 @@ public class MockInterviewMiddleware : IUpdateMiddleware
     private async Task<Stream> DownloadVoiceAsync(UpdateContext ctx, string fileId, CancellationToken ct)
     {
         var file = await ctx.BotClient.GetFile(fileId, cancellationToken: ct);
-        using var ms = new MemoryStream();
+        var ms = new MemoryStream();
         await ctx.BotClient.DownloadFile(file.FilePath!, ms, cancellationToken: ct);
         ms.Position = 0;
         return ms;

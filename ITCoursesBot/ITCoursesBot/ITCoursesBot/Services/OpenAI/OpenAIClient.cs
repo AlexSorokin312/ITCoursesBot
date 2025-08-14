@@ -26,32 +26,48 @@ namespace ITCoursesBot.ITCoursesBot.Services.OpenAI
             var body = new
             {
                 model = "gpt-4.1",
-                messages = new object[]
+                input = new object[]
                 {
                     new { role = "system", content = systemInstructions },
-                    new { role = "user",   content = userMessage }
+                    new { role = "user", content = userMessage }
                 }
             };
-            var content = new StringContent(
-                JsonSerializer.Serialize(body),
-                Encoding.UTF8,
-                "application/json"
-            );
 
-            using var resp = await _httpClient.PostAsync(
-                "https://api.openai.com/v1/chat/completions",
-                content
-            );
+            using var content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
+            using var resp = await _httpClient.PostAsync("https://api.openai.com/v1/responses", content);
             resp.EnsureSuccessStatusCode();
-            using var stream = await resp.Content.ReadAsStreamAsync();
-            var doc = await JsonDocument.ParseAsync(stream);
-            var msg = doc.RootElement
-                         .GetProperty("choices")[0]
-                         .GetProperty("message")
-                         .GetProperty("content")
-                         .GetString()
-                         ?.Trim() ?? String.Empty;
-            return msg;
+
+            var json = await resp.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            if (root.TryGetProperty("output", out var outputEl) &&
+                outputEl.ValueKind == JsonValueKind.Array)
+            {
+                var pieces = new List<string>();
+
+                foreach (var item in outputEl.EnumerateArray())
+                {
+                    if (item.TryGetProperty("content", out var contentEl) &&
+                        contentEl.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var part in contentEl.EnumerateArray())
+                        {
+                            if (part.TryGetProperty("text", out var textEl) &&
+                                textEl.ValueKind == JsonValueKind.String)
+                            {
+                                var t = textEl.GetString();
+                                if (!string.IsNullOrEmpty(t)) pieces.Add(t);
+                            }
+                        }
+                    }
+                }
+
+                var joined = string.Join("\n", pieces).Trim();
+                if (!string.IsNullOrEmpty(joined)) return joined;
+            }
+
+            return string.Empty;
         }
 
         public async Task<AnswerResult> EvaluateAsync(string questionText,

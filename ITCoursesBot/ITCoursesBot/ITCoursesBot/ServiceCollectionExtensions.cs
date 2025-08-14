@@ -93,6 +93,12 @@ namespace ITCoursesBot.ITCoursesBot
                 c.Timeout = TimeSpan.FromSeconds(60);
             }).AddPolicyHandler(GetRetry());
 
+            services.AddHttpClient<IDialogHistoryClient, DialogHistoryClient>(c =>
+            {
+                c.BaseAddress = new Uri(baseUrl);
+                c.Timeout = TimeSpan.FromSeconds(50);
+            }).AddPolicyHandler(GetRetry());
+
             return services;
         }
 

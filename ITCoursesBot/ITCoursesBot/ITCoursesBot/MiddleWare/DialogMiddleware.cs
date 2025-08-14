@@ -2,6 +2,7 @@
 using ITCoursesBot.Interfaces;
 using ITCoursesBot.ITCoursesBot.Configuration;
 using Microsoft.Extensions.Options;
+using System.Net;
 using System.Text;
 using Telegram.Bot;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -14,6 +15,7 @@ public class DialogMiddleware : IUpdateMiddleware
     private readonly IMessageService _msg;
     private readonly IKeyboardBuilder _kbd;
     private readonly ISessionManager _sessions;
+    private readonly IDialogHistoryClient _dialogHistory;
 
     public DialogMiddleware(
         IOpenAIClient openAi,
@@ -21,7 +23,8 @@ public class DialogMiddleware : IUpdateMiddleware
         IMessageService msg,
         IKeyboardBuilder kbd,
         ISessionManager sessions,
-        IAiLimitClient aiLimit)
+        IAiLimitClient aiLimit,
+        IDialogHistoryClient dialogHistory)
     {
         _openAi = openAi;
         _settings = options.Value;
@@ -29,6 +32,7 @@ public class DialogMiddleware : IUpdateMiddleware
         _kbd = kbd;
         _sessions = sessions;
         _aiLimit = aiLimit;
+        _dialogHistory = dialogHistory;
     }
 
     public async Task InvokeAsync(UpdateContext ctx, Func<Task> next)
@@ -111,6 +115,19 @@ public class DialogMiddleware : IUpdateMiddleware
                         string answer;
                         try
                         {
+                            var wrote = await TryWriteHistoryAsync(chatId, userQuestion, ctx.CancellationToken);
+                            if (!wrote)
+                            {
+                                var info = await SafeGetRequestInfo(chatId, ctx.CancellationToken);
+                                await SafeSendAsync(
+                                    chatId,
+                                    $"⛔ Лимит запросов исчерпан.\n" +
+                                    $"Осталось: {info.RemainingRequests}\n" +
+                                    $"Попробуйте позже.",
+                                    _kbd.BuildBackToMenu(),
+                                    ctx.CancellationToken);
+                                return;
+                            }
                             answer = await _openAi.GetChatResponseAsync(prompt, userQuestion);
                         }
                         catch (Exception ex)
@@ -194,5 +211,31 @@ public class DialogMiddleware : IUpdateMiddleware
         await ctx.BotClient.DownloadFile(fileInfo.FilePath!, ms, cancellationToken: ct);
         ms.Position = 0;
         return ms;
+    }
+
+    private async Task<bool> TryWriteHistoryAsync(long chatId, string message, CancellationToken ct)
+    {
+        try
+        {
+            await _dialogHistory.WriteAsync(new CreateDialogRequest
+            {
+                TelegramId = chatId,
+                Message = message,
+                CountAsRequest = true
+            }, ct);
+
+            return true;
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.TooManyRequests)
+        {
+            LoggerService.LogInfo($"Лимит исчерпан при записи истории для {chatId}");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            // Не блокируем диалог из-за ошибок логгирования истории
+            LoggerService.LogError($"Не удалось записать историю диалога для {chatId}: {ex.Message}");
+            return true;
+        }
     }
 }
